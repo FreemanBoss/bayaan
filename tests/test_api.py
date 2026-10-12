@@ -87,6 +87,15 @@ class ApiTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(response.headers["content-type"], "audio/wav")
         self.assertTrue(response.content.startswith(b"RIFF"))
 
+    async def test_local_piper_produces_real_arabic_wav(self):
+        voice_path = "/home/freeman/Arabic-Project/bayaan/.models/ar_JO-kareem-medium.onnx"
+        with patch("backend.main.PIPER_AR_VOICE", voice_path):
+            response = await self.client.post("/api/speech", json={"text": "مرحبًا بك", "language": "ar"})
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.headers["content-type"], "audio/wav")
+        self.assertTrue(response.content.startswith(b"RIFF"))
+        self.assertGreater(len(response.content), 1000)
+
 
 if __name__ == "__main__":
     unittest.main()

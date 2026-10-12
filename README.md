@@ -10,7 +10,7 @@ Gemma 3 4B runs locally through Ollama for mission generation, Arabic writing fe
 
 Voice chat is available from the always-visible Talk to Bayān control. Type or use push-to-talk dictation, review the transcript, then send the text to local Gemma; recent turns stay in browser memory only. Browser speech recognition may use a browser-vendor network service; it is **not guaranteed to be local or private**, and may be unavailable in Firefox. Spoken replies use a matching browser voice when installed, or the optional local Piper route for Arabic. Bayān does not record or upload raw audio to its backend.
 
-If the browser has no Arabic voice, optional local Piper speech can be enabled:
+If the browser has no Arabic voice, optional local Piper speech can be enabled. Install its separately licensed engine and download a supported Arabic voice:
 
 ```bash
 pip install -r requirements-voice.txt
@@ -18,7 +18,7 @@ mkdir -p .models
 python -m piper.download_voices ar_JO-kareem-medium --data-dir .models
 ```
 
-Set `PIPER_AR_VOICE` to the downloaded `.onnx` file path before starting FastAPI (for example, `.models/ar_JO-kareem-medium.onnx`). Piper itself is GPL-3.0; the Kareem model card points to its training dataset for licensing, so review that source and terms for your use before enabling/distributing it. The voice model is not bundled or committed.
+Set `PIPER_AR_VOICE` to the downloaded `.onnx` file path before starting FastAPI (for example, `.models/ar_JO-kareem-medium.onnx`). Piper itself is GPL-3.0; the Kareem model card points to its training dataset for licensing, so review that source and terms for your use before enabling/distributing it. The voice model is not bundled or committed. The API synthesizes Arabic WAV locally; no reply text is sent to a speech service.
 
 ## Local Setup
 
