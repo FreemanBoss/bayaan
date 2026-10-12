@@ -13,33 +13,39 @@
     <header class="topbar">
       <a class="brand" href="/" aria-label="بَيَان الصفحة الرئيسية"><span class="brand-mark">ب</span><span>بَيَان</span></a>
       <div class="top-actions">
+        <div class="player-progress" aria-label="تقدمك في اللعبة">
+          <span class="player-rank" id="player-rank">مبتدئ البلاغة</span>
+          <span class="xp-track"><i id="xp-progress"></i></span>
+          <span class="xp-count"><b id="score">٠</b><small>نقطة</small></span>
+        </div>
         <span class="model-status" id="model-status"><i></i><span>جارٍ فحص النموذج</span></span>
+        <button class="theme-toggle" id="theme-toggle" type="button" aria-label="تفعيل الوضع الداكن" title="الوضع الداكن">◐</button>
       </div>
     </header>
 
     <main>
       <section class="intro" id="intro">
         <div class="intro-copy">
-          <p class="eyebrow">لعبة بلاغية في الهواء الطلق</p>
-          <h1>دع العالمَ <em>يُلهمُ</em> عبارتك.</h1>
-          <p class="lede">تأمّل مشهدًا حقيقيًا، ثم عُد بصورةٍ عربية من صنعك. بَيَان يبدأ بسؤال، ثم يترك لك الطريق.</p>
-          <div class="steps" aria-label="مراحل الجولة">
-            <span><b>١</b> اختر</span><span class="step-line"></span><span><b>٢</b> اخرج</span><span class="step-line"></span><span><b>٣</b> اكتب</span>
+          <p class="eyebrow"><span class="live-mark"></span> مغامرة بلاغية · الجولة <b id="round-number">١</b></p>
+          <h1>اخرج لتجدَ <em>صورتك.</em></h1>
+          <p class="lede">اختر تحدّيًا، اكتشف العالم بعينيك، ثم عد بعبارة عربية تستحق نقاط الخبرة.</p>
+          <div class="quest-steps" aria-label="مراحل الجولة">
+            <span class="quest-step active" id="step-choose"><b>١</b><span>اختر مهمتك</span></span><span class="step-line"></span><span class="quest-step" id="step-outside"><b>٢</b><span>اخرج واكتشف</span></span><span class="step-line"></span><span class="quest-step" id="step-write"><b>٣</b><span>اكتب واكسب</span></span>
           </div>
         </div>
         <div class="field-note" aria-hidden="true">
-          <span class="note-label">من دفتر البلاغة</span>
+          <span class="note-label">بطاقة التحدّي اليومي</span>
           <span class="note-word">تَشبيه</span>
           <span class="note-rule"></span>
           <span class="note-example">«الظلُّ عباءةٌ<br />ترتديها الأرض»</span>
-          <span class="note-caption">صورةٌ تبدأ بالملاحظة</span>
+          <span class="note-caption">لاحظ · تخيّل · صُغ</span>
         </div>
       </section>
 
       <section class="builder" id="builder" aria-labelledby="builder-title">
-        <div class="section-heading">
-          <div><p class="eyebrow">جولة جديدة</p><h2 id="builder-title">ما الصورة التي ستبحث عنها؟</h2></div>
-          <span class="round-index">01 / 03</span>
+          <div class="section-heading">
+          <div><p class="eyebrow">اختر بطاقة التحدّي</p><h2 id="builder-title">أيُّ بابٍ من البلاغة ستفتحه؟</h2></div>
+          <span class="round-index">المرحلة ١ من ٣</span>
         </div>
         <div class="form-grid">
           <fieldset class="mode-field">
@@ -60,19 +66,17 @@
       </section>
 
       <section class="mission-section hidden" id="mission-section" aria-live="polite">
-        <div class="section-heading"><div><p class="eyebrow">مهمتك</p><h2 id="mission-title">تأمّل ثم صُغ</h2></div><span class="round-index">02 / 03</span></div>
+        <div class="section-heading"><div><p class="eyebrow">بطاقة مهمتك</p><h2 id="mission-title">تأمّل ثم صُغ</h2></div><span class="round-index">المرحلة ٢ من ٣</span></div>
         <article class="mission-card">
           <div class="mission-meta"><span class="mode-chip" id="mission-mode">تشبيه</span><span id="mission-source">ذكاء اصطناعي مفتوح</span></div>
           <p class="mission-prompt" id="mission-prompt"></p>
           <p class="mission-question" id="mission-question"></p>
-          <button class="text-button" id="translate-mission" type="button">ترجم هذه المهمة إلى الإنجليزية <span>↗</span></button>
-          <p class="translation hidden" id="mission-translation" dir="ltr"></p>
           <div class="mission-actions"><label class="duration-label" for="duration">وقت التأمل <select id="duration"><option value="2">دقيقتان</option><option value="5">٥ دقائق</option><option value="10">١٠ دقائق</option></select></label><button class="primary-button" id="start-walk" type="button">سأخرج الآن <span aria-hidden="true">←</span></button></div>
         </article>
       </section>
 
       <section class="walk-screen hidden" id="walk-screen" aria-live="polite">
-        <div class="walk-orbit" aria-hidden="true"><span>خُذْ نَفَسًا</span></div>
+        <div class="walk-cue"><span>مهمّة ميدانيّة</span><strong>لاحظ ما حولك.</strong><small>أصغِ · تأمّل · تخيّل</small></div>
         <p class="eyebrow">الآن دور العالم</p>
         <h2>ضع الهاتف جانبًا.</h2>
         <p>لا تحتاج إلى تصوير شيء. امشِ في مكان آمن، وتأمّل ما حولك. عُد حين تكون مستعدًا.</p>
@@ -88,25 +92,29 @@
           <form id="reflection-form" class="reflection-form">
             <label for="reflection">اكتب عبارتك بالعربية</label>
             <textarea id="reflection" rows="4" maxlength="500" placeholder="مثال: كان ضوء العصر خيطًا ذهبيًا يخيط أطراف الغيم…" required></textarea>
+            <div class="voice-tools">
+              <button class="voice-input" id="voice-input" type="button" aria-pressed="false"><span class="mic-mark" aria-hidden="true">●</span><span id="voice-input-label">أمْلِ عبارتك بالعربية</span></button>
+              <span class="voice-state" id="voice-input-state" aria-live="polite">اضغط للتسجيل، واضغط مجددًا للتوقف.</span>
+            </div>
+            <p class="voice-disclosure">الإملاء الصوتي يعتمد على دعم المتصفح وقد يرسل الصوت إلى مزوّده. راجع النص قبل إرساله؛ لا يسجّل بَيَان الصوت ولا يحفظه.</p>
             <div class="form-foot"><span id="char-count">٠ / ٥٠٠</span><button class="primary-button" type="submit" id="get-feedback">تأمّل عبارتي <span>←</span></button></div>
           </form>
         </div>
       </section>
 
       <section class="feedback-section hidden" id="feedback-section" aria-live="polite">
-        <div class="section-heading"><div><p class="eyebrow">مرآة بلاغية</p><h2>لغتك تنمو بالملاحظة.</h2></div><span class="round-index">تمّت الجولة</span></div>
+        <div class="section-heading"><div><p class="eyebrow">اكتملت الجولة · +٢٥ نقطة خبرة</p><h2>أحسنتَ التقاط الصورة.</h2></div><span class="round-index" id="round-result">وسام جديد</span></div>
         <div class="feedback-grid">
           <article class="feedback-block"><span>١ / ما يلمع</span><p id="feedback-strength"></p></article>
           <article class="feedback-block"><span>٢ / خطوة تالية</span><p id="feedback-suggestion"></p></article>
           <article class="feedback-block feedback-rewrite"><span>٣ / اقتراح للصياغة</span><p id="feedback-rewrite"></p></article>
         </div>
-        <button class="text-button" id="translate-feedback" type="button">ترجم التغذية الراجعة إلى الإنجليزية ↗</button>
-        <p class="translation hidden" id="feedback-translation" dir="ltr"></p>
+        <div class="voice-response"><button class="text-button" id="speak-feedback" type="button">استمع إلى الرد بالعربية <span aria-hidden="true">◖))</span></button><p id="speech-status" class="speech-status" aria-live="polite"></p></div>
         <button class="new-round" id="new-round" type="button">ابدأ جولة أخرى <span>↶</span></button>
       </section>
     </main>
 
-    <footer><span>بَيَان · مساحةٌ للبلاغة خارج الشاشة</span><span>نصوصك تبقى في هذا المتصفح.</span></footer>
+    <footer><span>بَيَان · العبارة تبدأ خارج الشاشة</span><span>صوتك ونصك لا يُحفظان في التطبيق.</span></footer>
     <div class="toast" id="toast" role="status"></div>
   </body>
 </html>

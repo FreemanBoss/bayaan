@@ -1,6 +1,32 @@
 const $ = (selector) => document.querySelector(selector);
-const state = { mission: null, feedback: null, walkInterval: null };
+const state = {
+  mission: null,
+  feedback: null,
+  walkInterval: null,
+  recognition: null,
+  dictationBase: "",
+  dictationFinal: "",
+  roundRewarded: false,
+  score: Number(localStorage.getItem("bayaan-score") || 0),
+  rounds: Number(localStorage.getItem("bayaan-rounds") || 0),
+};
 const sections = ["#mission-section", "#walk-screen", "#reflection-section", "#feedback-section"];
+
+function updateGameHud() {
+  const format = (value) => new Intl.NumberFormat("ar").format(value);
+  $("#score").textContent = format(state.score);
+  $("#round-number").textContent = format(state.rounds + 1);
+  $("#xp-progress").style.width = `${state.score % 100}%`;
+  $("#player-rank").textContent = state.score >= 200 ? "صانع البيان" : state.score >= 100 ? "مستكشف البلاغة" : "مبتدئ البلاغة";
+}
+
+function setGamePhase(phase) {
+  ["choose", "outside", "write"].forEach((name, index) => {
+    const element = $(`#step-${name}`);
+    element.classList.toggle("completed", index + 1 < phase);
+    element.classList.toggle("active", index + 1 === phase);
+  });
+}
 
 function showToast(message) {
   const toast = $("#toast");
@@ -49,8 +75,8 @@ $("#create-mission").addEventListener("click", async (event) => {
     $("#mission-prompt").textContent = state.mission.prompt;
     $("#mission-question").textContent = state.mission.question;
     $("#mission-source").textContent = state.mission.source === "gemma3:4b" ? "صاغها نموذج Gemma المحلي" : "بطاقة عربية تعمل دون اتصال بالنموذج";
-    $("#mission-translation").classList.add("hidden");
-    $("#mission-translation").textContent = "";
+    state.roundRewarded = false;
+    setGamePhase(2);
     hideSections();
     $("#mission-section").classList.remove("hidden");
     $("#mission-section").scrollIntoView({ behavior: "smooth", block: "start" });
@@ -63,6 +89,7 @@ $("#create-mission").addEventListener("click", async (event) => {
 
 $("#start-walk").addEventListener("click", () => {
   window.clearInterval(state.walkInterval);
+  setGamePhase(2);
   let remaining = Number($("#duration").value) * 60;
   const countdown = $("#walk-countdown");
   const finished = $("#walk-finished");
@@ -90,6 +117,7 @@ $("#start-walk").addEventListener("click", () => {
 
 $("#return-from-walk").addEventListener("click", () => {
   window.clearInterval(state.walkInterval);
+  setGamePhase(3);
   $("#walk-screen").classList.add("hidden");
   $("#reflection-reminder").textContent = state.mission?.prompt || "تأمّل ما حولك ثم اكتب عبارتك.";
   $("#reflection").value = "";
@@ -117,8 +145,15 @@ $("#reflection-form").addEventListener("submit", async (event) => {
     $("#feedback-strength").textContent = state.feedback.strength;
     $("#feedback-suggestion").textContent = state.feedback.suggestion;
     $("#feedback-rewrite").textContent = state.feedback.rewrite;
-    $("#feedback-translation").classList.add("hidden");
-    $("#feedback-translation").textContent = "";
+    if (!state.roundRewarded) {
+      state.score += 25;
+      state.rounds += 1;
+      state.roundRewarded = true;
+      localStorage.setItem("bayaan-score", String(state.score));
+      localStorage.setItem("bayaan-rounds", String(state.rounds));
+      updateGameHud();
+      $("#round-result").textContent = state.score % 100 === 0 ? "ارتقيتَ إلى مستوى جديد!" : "وسام الملاحظة +٢٥";
+    }
     $("#reflection-section").classList.add("hidden");
     $("#feedback-section").classList.remove("hidden");
     $("#feedback-section").scrollIntoView({ behavior: "smooth", block: "start" });
@@ -129,47 +164,109 @@ $("#reflection-form").addEventListener("submit", async (event) => {
   }
 });
 
-async function translateText(text, target) {
-  const result = await postJson("/api/translate", { text, language: "English" });
-  target.textContent = result.translation;
-  target.classList.remove("hidden");
+const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+const voiceInput = $("#voice-input");
+
+if (!SpeechRecognition) {
+  voiceInput.disabled = true;
+  $("#voice-input-label").textContent = "الإملاء الصوتي غير مدعوم في هذا المتصفح";
+  $("#voice-input-state").textContent = "يمكنك كتابة عبارتك بالعربية في الحقل أعلاه.";
+} else {
+  voiceInput.addEventListener("click", () => {
+    if (state.recognition) {
+      state.recognition.stop();
+      return;
+    }
+    const recognition = new SpeechRecognition();
+    recognition.lang = "ar-SA";
+    recognition.continuous = false;
+    recognition.interimResults = true;
+    recognition.maxAlternatives = 1;
+    state.dictationBase = $("#reflection").value.trim();
+    state.dictationFinal = "";
+    state.recognition = recognition;
+    recognition.onstart = () => {
+      voiceInput.classList.add("recording");
+      voiceInput.setAttribute("aria-pressed", "true");
+      $("#voice-input-label").textContent = "أوقف الإملاء";
+      $("#voice-input-state").textContent = "أستمع الآن… اضغط لإيقاف الإملاء.";
+    };
+    recognition.onresult = (event) => {
+      let interim = "";
+      for (let index = event.resultIndex; index < event.results.length; index += 1) {
+        const phrase = event.results[index][0].transcript.trim();
+        if (event.results[index].isFinal) state.dictationFinal += `${phrase} `;
+        else interim += `${phrase} `;
+      }
+      const recognized = `${state.dictationFinal}${interim}`.trim();
+      $("#reflection").value = [state.dictationBase, recognized].filter(Boolean).join(" ");
+      updateCounter();
+      $("#voice-input-state").textContent = interim ? `أسمع: ${interim}` : "وصلت الكلمات؛ يمكنك مراجعتها قبل الإرسال.";
+    };
+    recognition.onerror = (event) => {
+      const messages = {
+        "not-allowed": "لم يُسمح باستخدام الميكروفون. يمكنك الكتابة بدلًا من ذلك.",
+        "no-speech": "لم ألتقط كلامًا. اضغط وحاول مرة أخرى.",
+        "network": "خدمة الإملاء في المتصفح تحتاج إلى اتصال بالشبكة.",
+      };
+      $("#voice-input-state").textContent = messages[event.error] || "تعذّر الإملاء؛ يمكنك كتابة عبارتك يدويًا.";
+    };
+    recognition.onend = () => {
+      state.recognition = null;
+      voiceInput.classList.remove("recording");
+      voiceInput.setAttribute("aria-pressed", "false");
+      $("#voice-input-label").textContent = "أمْلِ عبارتك بالعربية";
+      if (state.dictationFinal) $("#voice-input-state").textContent = "راجع النص المنسوخ وصحّحه قبل إرساله.";
+    };
+    try {
+      recognition.start();
+    } catch {
+      state.recognition = null;
+      $("#voice-input-state").textContent = "تعذّر بدء الميكروفون. تحقّق من إذن المتصفح.";
+    }
+  });
 }
 
-$("#translate-mission").addEventListener("click", async () => {
-  const button = $("#translate-mission");
-  try {
-    if ($( "#mission-translation").classList.contains("hidden")) {
-      setBusy(button, true, "Translating…");
-      await translateText(`${state.mission.prompt}\n${state.mission.question}`, $("#mission-translation"));
-      button.textContent = "Hide English translation";
-    } else {
-      $("#mission-translation").classList.add("hidden");
-      button.textContent = "Translate this mission into English ↗";
-    }
-  } catch {
-    showToast("لم تتوفر الترجمة الآن.");
-  } finally {
-    setBusy(button, false);
+$("#speak-feedback").addEventListener("click", () => {
+  if (!("speechSynthesis" in window) || !("SpeechSynthesisUtterance" in window)) {
+    $("#speech-status").textContent = "الصوت غير مدعوم في هذا المتصفح.";
+    return;
   }
-});
-
-$("#translate-feedback").addEventListener("click", async () => {
-  const button = $("#translate-feedback");
-  try {
-    setBusy(button, true, "Translating…");
-    const text = Object.values(state.feedback || {}).filter((value) => typeof value === "string").join("\n");
-    await translateText(text, $("#feedback-translation"));
-  } catch {
-    showToast("لم تتوفر الترجمة الآن.");
-  } finally {
-    setBusy(button, false);
-  }
+  window.speechSynthesis.cancel();
+  const utterance = new SpeechSynthesisUtterance([
+    state.feedback?.strength,
+    state.feedback?.suggestion,
+    state.feedback?.rewrite,
+  ].filter(Boolean).join(". "));
+  utterance.lang = "ar-SA";
+  utterance.rate = 0.9;
+  const arabicVoice = window.speechSynthesis.getVoices().find((voice) => voice.lang.toLowerCase().startsWith("ar"));
+  if (arabicVoice) utterance.voice = arabicVoice;
+  utterance.onstart = () => { $("#speech-status").textContent = "أقرأ التغذية الراجعة بالعربية…"; };
+  utterance.onend = () => { $("#speech-status").textContent = ""; };
+  utterance.onerror = () => { $("#speech-status").textContent = "تعذّر تشغيل الصوت؛ قد لا يتوفر صوت عربي على جهازك."; };
+  window.speechSynthesis.speak(utterance);
 });
 
 $("#new-round").addEventListener("click", () => {
   hideSections();
+  setGamePhase(1);
   $("#builder").scrollIntoView({ behavior: "smooth", block: "start" });
   document.title = "بَيَان | امشِ، تأمّل، ثم اكتب";
+});
+
+const themeToggle = $("#theme-toggle");
+function setTheme(theme) {
+  document.documentElement.dataset.theme = theme;
+  const dark = theme === "dark";
+  themeToggle.textContent = dark ? "☼" : "◐";
+  themeToggle.setAttribute("aria-label", dark ? "تفعيل الوضع الفاتح" : "تفعيل الوضع الداكن");
+  themeToggle.title = dark ? "الوضع الفاتح" : "الوضع الداكن";
+  localStorage.setItem("bayaan-theme", theme);
+}
+setTheme(localStorage.getItem("bayaan-theme") || "light");
+themeToggle.addEventListener("click", () => {
+  setTheme(document.documentElement.dataset.theme === "dark" ? "light" : "dark");
 });
 
 async function checkModel() {
@@ -188,3 +285,4 @@ async function checkModel() {
   }
 }
 checkModel();
+updateGameHud();

@@ -33,11 +33,6 @@ class ReflectionRequest(BaseModel):
     reflection: str = Field(min_length=2, max_length=500)
 
 
-class TranslationRequest(BaseModel):
-    text: str = Field(min_length=1, max_length=1000)
-    language: Literal["English"] = "English"
-
-
 async def ask_local_model(prompt: str, temperature: float = 0.4) -> str:
     async with httpx.AsyncClient(timeout=90) as client:
         response = await client.post(
@@ -118,19 +113,3 @@ async def reflect(request: ReflectionRequest):
             "rewrite": "يمكنك تحسين الصورة بإضافة تفصيل حسي واحد من ملاحظتك.",
             "source": "offline-feedback",
         }
-
-
-@app.post("/api/translate")
-async def translate(request: TranslationRequest):
-    prompt = (
-        "Translate the following Arabic text faithfully into English. Preserve its meaning and tone. "
-        "Return JSON only with one key: translation. Text: " + request.text
-    )
-    try:
-        raw = await ask_local_model(prompt, temperature=0.1)
-        translation = parse_json_object(raw).get("translation")
-        if not isinstance(translation, str) or not translation.strip():
-            raise ValueError("Invalid translation")
-        return {"translation": translation.strip(), "source": "gemma3:4b"}
-    except (httpx.HTTPError, ValueError, KeyError, TypeError):
-        return {"translation": "الترجمة متاحة عند تشغيل نموذج Gemma المحلي.", "source": "unavailable"}

@@ -42,15 +42,9 @@ class ApiTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json()["source"], "gemma3:4b")
 
-    async def test_translation_is_explicitly_optional(self):
-        output = '{"translation":"The shade is a cloak."}'
-        with patch("backend.main.ask_local_model", new=AsyncMock(return_value=output)):
-            response = await self.client.post(
-                "/api/translate",
-                json={"text": "الظل عباءة", "language": "English"},
-            )
-        self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.json()["translation"], "The shade is a cloak.")
+    async def test_translation_endpoint_is_removed(self):
+        response = await self.client.post("/api/translate", json={"text": "الظل عباءة"})
+        self.assertEqual(response.status_code, 404)
 
 
 if __name__ == "__main__":

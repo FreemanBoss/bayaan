@@ -1,69 +1,78 @@
-# بَيَان | Bayān Walk
+# Bayān Walk | بَيَان
 
-لعبة بلاغية عربية تدعوك إلى الخروج، وتأمل مشهد حقيقي، ثم العودة لتصوغ ملاحظتك بالعربية. العربية هي لغة المنتج وتجربته الأساسية؛ الترجمة إلى الإنجليزية اختيارية فقط.
+**An Arabic-first rhetoric field game.** Choose a البلاغة challenge, step away from the screen to notice the world, then return to write an original Arabic image. Gemma generates and responds in Arabic. The product has no translation feature.
 
-> جولة بلاغية قصيرة: اختر تمرينًا، أغلق الشاشة، تأمل العالم، ثم اكتب عبارتك.
+The game loop is intentionally short on-screen: choose a challenge, pocket the phone, observe safely, and come back to reflect. Completing a round earns experience points stored in this browser.
 
-## لماذا بَيَان؟
+## Why Open Models
 
-تطبيقات التعلم غالبًا تطلب مزيدًا من وقت الشاشة. بَيَان يقلب الترتيب: نموذج Gemma المفتوح يعمل محليًا عبر Ollama ليقترح تمرينًا عربيًا قصيرًا، ثم يفسح المجال للملاحظة الواقعية. بعد العودة، يعطي المتعلم تغذية راجعة عربية موجزة على محاولته البلاغية.
+Gemma 3 4B runs locally through Ollama for mission generation and Arabic writing feedback. This makes model choice and prompts inspectable and avoids sending reflection text to a hosted model API. When Gemma is unavailable or its answer fails Arabic, rhetoric, or safety checks, a curated Arabic mission and feedback fallback keep the game usable.
 
-لا نطلب الموقع الدقيق أو الصور أو التسجيلات. لا توجد واجهة سحابية للذكاء الاصطناعي في مسار المنتج.
+Voice input is optional progressive enhancement through the browser Web Speech API. Browser speech recognition may use a browser-vendor network service; it is **not guaranteed to be local or private**. Bayān does not record or upload audio to its backend. The recognized text appears in the editor for review, and only after the user explicitly submits it is text sent to local Gemma. Spoken feedback uses browser speech synthesis and an installed Arabic voice when available.
 
-## التشغيل المحلي
+## Local Setup
 
-المتطلبات: Python 3.10+، Node غير مطلوب، و[Ollama](https://ollama.com/) مع نموذج Gemma.
+Requirements: Python 3.10+, [Ollama](https://ollama.com/), and a browser. Node.js is not required.
 
 ```bash
 ollama pull gemma3:4b
 python3 -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
+```
+
+Start Ollama in one terminal:
+
+```bash
 ollama serve
 ```
 
-في نافذة طرفية أخرى:
+Start Bayān in another terminal from the repository root:
 
 ```bash
-cd bayaan
-uvicorn backend.main:app --reload
+.venv/bin/uvicorn backend.main:app --reload
 ```
 
-افتح http://127.0.0.1:8000 . لتبديل النموذج، عيّن `OLLAMA_MODEL` قبل تشغيل الخادم. الإعداد الافتراضي `gemma3:4b`.
+Open <http://127.0.0.1:8000>. To use another compatible local Ollama model, set `OLLAMA_MODEL` before starting the server. The default is `gemma3:4b`.
 
-إذا لم يكن Ollama متاحًا، يظل توليد المهمة والتغذية الراجعة يعملان ببطاقات عربية ثابتة. الترجمة لا تعمل دون النموذج المحلي.
+If Ollama is unavailable, Bayān uses curated Arabic mission and feedback cards. Voice input/output availability depends on browser support and installed speech services or voices.
 
-## تحقق سريع
+## Test
 
 ```bash
-python3 -m unittest discover -s tests -v
+.venv/bin/python -m unittest discover -s tests -v
 ```
 
-## التصميم
+The tests cover Arabic output validation, safe mission fallback, rhetoric-mode checks, and FastAPI routes.
+
+## Architecture
 
 ```mermaid
 flowchart LR
-    A[واجهة عربية RTL] --> B[FastAPI]
-    B --> C{Ollama متاح؟}
-    C -->|نعم| D[Gemma مفتوح محليًا]
-    C -->|لا| E[بطاقات عربية احتياطية]
-    D --> F[تحقق من العربية والسلامة]
+    A[Arabic RTL game UI] --> B[FastAPI]
+    B --> C{Local Ollama available?}
+    C -->|Yes| D[Gemma 3 4B]
+    C -->|No or invalid output| E[Curated Arabic fallback]
+    D --> F[Arabic, rhetoric, and safety validation]
     E --> A
     F --> A
-    A -->|اختياري| G[ترجمة إنجليزية]
+    G[Optional browser speech recognition] --> H[Editable transcript]
+    H -->|User submits text| B
+    A --> I[Browser Arabic speech synthesis]
 ```
 
-## النطاق والحدود
+## Safety and Scope
 
-- التدريب البلاغي للتأمل والكتابة، وليس تقييمًا أكاديميًا معتمدًا.
-- تغذية Gemma الراجعة اقتراح تعليمي قابل للنقاش، وليست حكمًا لغويًا نهائيًا.
-- البطاقات مصممة للتأمل في مكان آمن؛ لا تستخدم أثناء عبور الطريق أو في ظروف غير آمنة.
-- أداة الترجمة الحالية تترجم إلى الإنجليزية فقط. يمكن توسيع قائمة اللغات لاحقًا دون تغيير كون العربية هي اللغة الأصلية للتجربة.
+- Missions are designed for stationary or safe outdoor observation. Never use the game while crossing roads or in unsafe surroundings.
+- Missions must not ask players to close their eyes, climb, touch, pick, consume, photograph, or record anything.
+- Arabic feedback is a learning suggestion, not an authoritative linguistic grade.
+- Browser speech recognition accuracy and privacy vary by browser, locale, microphone, and network. Review dictated text before submission; manual typing is always available.
+- Bayān does not store accounts, precise location, reflections, audio, or photos. XP and round count are stored in browser local storage.
 
-## تحدي Hacktoberfest
+## Hacktoberfest Week 1
 
-مُعدّ كتطبيق جديد لتحدي Hacktoberfest Open-Source AI Challenge: Week 1 — Touch Grass. يجب إضافة رابط المستودع العام، عرض توضيحي حقيقي، واختبار ميداني صادق قبل كتابة أي ادعاء بذلك في المشاركة.
+Bayān is a new project for the Hacktoberfest Open-Source AI Challenge: Week 1 — “Touch Grass.” The challenge runs October 5–11 PDT, with the final cutoff at 11:59 PM PDT on October 11 (October 12 at 7:59 AM WAT). Verify the live challenge page before submitting. The DEV entry must include the public repository, a real demo, and an honest account of any outdoor test.
 
-## الترخيص
+## License
 
-MIT. راجع ملف `LICENSE`.
+MIT. See [`LICENSE`](LICENSE).
