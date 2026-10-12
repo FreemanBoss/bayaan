@@ -63,15 +63,29 @@ class ApiTests(unittest.IsolatedAsyncioTestCase):
             self.assertEqual(response.status_code, 200)
             self.assertEqual(response.json()["translation"], expected)
 
-    async def test_chat_returns_response_in_requested_language(self):
-        output = '{"reply":"Try shaping that observation as a simile."}'
-        with patch("backend.main.ask_local_model", new=AsyncMock(return_value=output)):
+    async def test_chat_replies_in_arabic_when_interface_language_is_english(self):
+        expected = "حاول صياغة ملاحظتك في صورة تشبيه."
+        output = '{"reply":"' + expected + '"}'
+        with patch("backend.main.ask_local_model", new=AsyncMock(return_value=output)) as model:
             response = await self.client.post(
                 "/api/chat",
                 json={"message": "How can I write a simile?", "language": "en", "history": []},
             )
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.json()["reply"], "Try shaping that observation as a simile.")
+        self.assertEqual(response.json()["reply"], expected)
+        self.assertIn("Reply only in clear Modern Standard Arabic", model.await_args.args[0])
+        self.assertEqual(model.await_args.kwargs["num_predict"], 160)
+
+    async def test_chat_replaces_wholly_english_model_reply_with_arabic_fallback(self):
+        output = '{"reply":"Try shaping that observation as a simile."}'
+        with patch("backend.main.ask_local_model", new=AsyncMock(return_value=output)):
+            response = await self.client.post(
+                "/api/chat",
+                json={"message": "كيف أصوغ تشبيهًا؟", "language": "ar", "history": []},
+            )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["source"], "offline-reply")
+        self.assertIn("البلاغة العربية", response.json()["reply"])
 
     async def test_speech_route_explains_unconfigured_local_voice(self):
         with patch("backend.main.PIPER_AR_VOICE", ""):
@@ -95,6 +109,36 @@ class ApiTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(response.headers["content-type"], "audio/wav")
         self.assertTrue(response.content.startswith(b"RIFF"))
         self.assertGreater(len(response.content), 1000)
+
+    async def test_transcription_route_returns_editable_text(self):
+        with patch(
+            "backend.main._transcribe_local_audio",
+            return_value={"transcript": "كان الضوء خيطًا ذهبيًا", "detected_language": "ar"},
+        ) as transcriber:
+            response = await self.client.post(
+                "/api/transcribe",
+                files={"audio": ("voice-note.webm", b"test-audio", "audio/webm")},
+                data={"language": "ar"},
+            )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["transcript"], "كان الضوء خيطًا ذهبيًا")
+        transcriber.assert_called_once_with(b"test-audio", ".webm", "ar")
+
+    async def test_transcription_route_rejects_non_arabic_language(self):
+        response = await self.client.post(
+            "/api/transcribe",
+            files={"audio": ("voice-note.webm", b"test-audio", "audio/webm")},
+            data={"language": "en"},
+        )
+        self.assertEqual(response.status_code, 422)
+
+    async def test_transcription_rejects_non_audio_upload(self):
+        response = await self.client.post(
+            "/api/transcribe",
+            files={"audio": ("note.txt", b"not audio", "text/plain")},
+            data={"language": "ar"},
+        )
+        self.assertEqual(response.status_code, 415)
 
 
 if __name__ == "__main__":

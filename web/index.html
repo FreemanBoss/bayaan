@@ -16,23 +16,23 @@
         <div class="player-progress" aria-label="تقدمك في اللعبة">
           <span class="player-rank" id="player-rank">مبتدئ البلاغة</span>
           <span class="xp-track"><i id="xp-progress"></i></span>
-          <span class="xp-count"><b id="score">٠</b><small>نقطة</small></span>
+          <span class="xp-count"><span id="score">٠</span><small>نقطة</small></span>
         </div>
         <span class="model-status" id="model-status"><i></i><span>جارٍ فحص النموذج</span></span>
-        <button class="language-toggle" id="language-toggle" type="button" aria-label="Switch interface language to English">EN</button>
+        <button class="language-toggle" id="language-toggle" type="button" aria-label="Switch interface language to English" title="Switch to English">EN</button>
         <button class="voice-chat-open" id="voice-chat-open" type="button"><span aria-hidden="true">◖))</span><span id="talk-label">تحدّث مع بَيَان</span></button>
-        <button class="theme-toggle" id="theme-toggle" type="button" aria-label="تفعيل الوضع الداكن" title="الوضع الداكن"><span id="theme-label">الوضع الداكن</span></button>
+        <button class="theme-toggle" id="theme-toggle" type="button" aria-label="Dark mode" title="Dark mode"><span class="theme-icon" aria-hidden="true">☾</span></button>
       </div>
     </header>
 
     <main>
       <section class="intro" id="intro">
         <div class="intro-copy">
-          <p class="eyebrow"><span class="live-mark"></span> مغامرة بلاغية · الجولة <b id="round-number">١</b></p>
+          <p class="eyebrow"><span class="live-mark"></span> مغامرة بلاغية · الجولة <span id="round-number">١</span></p>
           <h1>اخرج لتجدَ <em>صورتك.</em></h1>
           <p class="lede">اختر تحدّيًا، اكتشف العالم بعينيك، ثم عد بعبارة عربية تستحق نقاط الخبرة.</p>
           <div class="quest-steps" aria-label="مراحل الجولة">
-            <span class="quest-step active" id="step-choose"><b>١</b><span>اختر مهمتك</span></span><span class="step-line"></span><span class="quest-step" id="step-outside"><b>٢</b><span>اخرج واكتشف</span></span><span class="step-line"></span><span class="quest-step" id="step-write"><b>٣</b><span>اكتب واكسب</span></span>
+            <span class="quest-step active" id="step-choose"><span class="step-digit">١</span><span>اختر مهمتك</span></span><span class="step-line"></span><span class="quest-step" id="step-outside"><span class="step-digit">٢</span><span>اخرج واكتشف</span></span><span class="step-line"></span><span class="quest-step" id="step-write"><span class="step-digit">٣</span><span>اكتب واكسب</span></span>
           </div>
         </div>
         <div class="field-note" aria-hidden="true">
@@ -95,10 +95,10 @@
             <label for="reflection" id="reflection-label">اكتب عبارتك بالعربية</label>
             <textarea id="reflection" rows="4" maxlength="500" placeholder="مثال: كان ضوء العصر خيطًا ذهبيًا يخيط أطراف الغيم…" required></textarea>
             <div class="voice-tools">
-              <button class="voice-input" id="voice-input" type="button" aria-pressed="false"><span class="mic-mark" aria-hidden="true">●</span><span id="voice-input-label">أمْلِ عبارتك بالعربية</span></button>
+              <button class="voice-input" id="voice-input" type="button" aria-pressed="false"><span class="mic-mark" aria-hidden="true">●</span><span id="voice-input-label">سجّل رسالة صوتية</span></button>
               <span class="voice-state" id="voice-input-state" aria-live="polite">اضغط للتسجيل، واضغط مجددًا للتوقف.</span>
             </div>
-            <p class="voice-disclosure">الإملاء الصوتي يعتمد على دعم المتصفح وقد يرسل الصوت إلى مزوّده. راجع النص قبل إرساله؛ لا يسجّل بَيَان الصوت ولا يحفظه.</p>
+            <p class="voice-disclosure" id="voice-disclosure">يُرسل التسجيل إلى خادمك المحلي للتفريغ باستخدام Whisper. يُحذف الصوت بعد التفريغ؛ راجع النص قبل إرساله.</p>
             <div class="form-foot"><span id="char-count">٠ / ٥٠٠</span><button class="primary-button" type="submit" id="get-feedback">تأمّل عبارتي <span>←</span></button></div>
           </form>
         </div>
@@ -111,7 +111,7 @@
           <article class="feedback-block"><span>٢ / خطوة تالية</span><p id="feedback-suggestion"></p></article>
           <article class="feedback-block feedback-rewrite"><span>٣ / اقتراح للصياغة</span><p id="feedback-rewrite"></p></article>
         </div>
-        <div class="voice-response"><button class="text-button" id="speak-feedback" type="button">استمع إلى الرد بالعربية <span aria-hidden="true">◖))</span></button><p id="speech-status" class="speech-status" aria-live="polite"></p></div>
+        <div class="voice-response"><button class="text-button" id="speak-feedback" type="button">استمع إلى الرد بالعربية <span aria-hidden="true">◖))</span></button><div class="audio-controls" role="group" aria-label="تحكم بالصوت"><button class="audio-control" id="feedback-pause" type="button" disabled>Ⅱ</button><button class="audio-control" id="feedback-replay" type="button" disabled>↻</button><button class="audio-control" id="feedback-stop" type="button" disabled>■</button></div><p id="speech-status" class="speech-status" aria-live="polite"></p></div>
         <button class="new-round" id="new-round" type="button">ابدأ جولة أخرى <span>↶</span></button>
       </section>
     </main>
@@ -119,14 +119,14 @@
     <footer><span>بَيَان · العبارة تبدأ خارج الشاشة</span><span>صوتك ونصك لا يُحفظان في التطبيق.</span></footer>
     <dialog class="chat-dialog" id="voice-chat-dialog" aria-labelledby="chat-title">
       <div class="chat-head"><div><p class="eyebrow" data-i18n="conversation">محادثة صوتية ونصية</p><h2 id="chat-title" data-i18n="talkToBayaan">تحدّث مع بَيَان</h2></div><button class="close-dialog" id="close-chat" type="button" aria-label="إغلاق">×</button></div>
-      <p class="chat-disclosure" data-i18n="voicePrivacy">تعمل المحادثة عبر نص محلي مع Gemma. الإملاء قد يستخدم خدمة المتصفح؛ راجع النص قبل الإرسال.</p>
+      <p class="chat-disclosure" data-i18n="voicePrivacy">يسجّل بَيَان صوتك ويرسله إلى خادمك المحلي للتفريغ؛ ثم يرسل النص الذي تراجعه إلى Gemma المحلي.</p>
       <div class="chat-messages" id="chat-messages" aria-live="polite"><p class="chat-empty" data-i18n="chatWelcome">اكتب رسالتك أو أمْلِها بالعربية، وسأجيبك بصوت إن توفر.</p></div>
       <form id="chat-form" class="chat-form">
         <label for="chat-input" data-i18n="yourMessage">رسالتك</label>
         <textarea id="chat-input" rows="3" maxlength="1200" placeholder="اكتب أو أمْلِ رسالتك…"></textarea>
-        <div class="chat-controls"><button class="voice-input" id="chat-mic" type="button" aria-pressed="false"><span class="mic-mark" aria-hidden="true">●</span><span id="chat-mic-label" data-i18n="startDictation">ابدأ الإملاء</span></button><button class="primary-button" id="chat-send" type="submit" data-i18n="sendMessage">أرسل</button></div>
+        <div class="chat-controls"><button class="voice-input" id="chat-mic" type="button" aria-pressed="false"><span class="mic-mark" aria-hidden="true">●</span><span id="chat-mic-label" data-i18n="startDictation">سجّل رسالة صوتية</span></button><button class="primary-button" id="chat-send" type="submit" data-i18n="sendMessage">أرسل</button></div>
       </form>
-      <div class="chat-foot"><label class="speak-toggle"><input id="auto-speak" type="checkbox" checked /><span data-i18n="speakReplies">انطق الرد بالعربية</span></label><span class="chat-voice-state" id="chat-voice-state" aria-live="polite"></span></div>
+      <div class="chat-foot"><label class="speak-toggle"><input id="auto-speak" type="checkbox" checked /><span data-i18n="speakReplies">انطق الرد بالعربية</span></label><div class="audio-controls" role="group" aria-label="تحكم بالصوت"><button class="audio-control" id="chat-pause" type="button" disabled>Ⅱ</button><button class="audio-control" id="chat-replay" type="button" disabled>↻</button><button class="audio-control" id="chat-stop" type="button" disabled>■</button></div><span class="chat-voice-state" id="chat-voice-state" aria-live="polite"></span></div>
     </dialog>
     <div class="toast" id="toast" role="status"></div>
   </body>

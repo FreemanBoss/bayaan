@@ -3,15 +3,17 @@ const state = {
   mission: null,
   feedback: null,
   walkInterval: null,
-  recognition: null,
+  recorder: null,
+  recordingStream: null,
+  localDictationOnly: false,
   chatHistory: [],
-  dictationBase: "",
-  dictationFinal: "",
   roundRewarded: false,
   score: Number(localStorage.getItem("bayaan-score") || 0),
   rounds: Number(localStorage.getItem("bayaan-rounds") || 0),
   language: localStorage.getItem("bayaan-language") === "en" ? "en" : "ar",
 };
+const lastReadAloud = { feedback: "", chat: "" };
+const playback = { text: "", surface: "", statusElement: null, utterance: null, audio: null, audioUrl: null, state: "idle", requestId: 0 };
 const sections = ["#mission-section", "#walk-screen", "#reflection-section", "#feedback-section"];
 
 function updateGameHud() {
@@ -59,7 +61,7 @@ async function postJson(url, body) {
 
 const copy = {
   "#talk-label": ["تحدّث مع بَيَان", "Talk to Bayān"],
-  "#theme-label": ["ليلي", "Dark"],
+  "#theme-label": ["☾", "☀"],
   ".intro .lede": ["اختر تحدّيًا، اكتشف العالم بعينيك، ثم عد بعبارة عربية تستحق نقاط الخبرة.", "Choose a quest, explore the world with your own eyes, then return with an Arabic image worthy of experience points."],
   ".intro .eyebrow": ["مغامرة بلاغية · الجولة", "Rhetoric quest · Round"],
   ".note-label": ["بطاقة التحدّي اليومي", "Daily challenge card"],
@@ -104,9 +106,9 @@ const copy = {
   ".reflection-section .round-index": ["المرحلة ٣ من ٣", "Stage 3 of 3"],
   "#reflection-label": ["اكتب عبارتك بالعربية", "Write your phrase"],
   "#reflection": ["مثال: كان ضوء العصر خيطًا ذهبيًا يخيط أطراف الغيم…", "Example: Evening light was a golden thread stitching the clouds…"],
-  "#voice-input-label": ["أمْلِ عبارتك بالعربية", "Dictate your phrase"],
-  "#voice-input-state": ["اضغط للتسجيل، واضغط مجددًا للتوقف.", "Tap to dictate; tap again to stop."],
-  ".voice-disclosure": ["الإملاء الصوتي يعتمد على دعم المتصفح وقد يرسل الصوت إلى مزوّده. راجع النص قبل إرساله؛ لا يسجّل بَيَان الصوت ولا يحفظه.", "Speech recognition depends on browser support and may send audio to its provider. Review the transcript before sending; Bayān does not record or store audio."],
+  "#voice-input-label": ["سجّل رسالة صوتية", "Record a voice note"],
+  "#voice-input-state": ["اضغط للتسجيل، واضغط مجددًا للتوقف.", "Tap to record; tap again to stop."],
+  "#voice-disclosure": ["يظهر التفريغ المباشر عند دعم المتصفح وقد يعالج صوته عبر خدمة المتصفح. عند عدم توفره، يُفرّغ Whisper التسجيل محليًا بعد إيقافه. راجع النص قبل الإرسال.", "Live dictation appears when the browser supports it and may use its speech service. Otherwise, local Whisper transcribes the recording after you stop. Review the text before sending."],
   "#get-feedback": ["تأمّل عبارتي", "Review my phrase"],
   ".feedback-section .eyebrow": ["اكتملت الجولة · +٢٥ نقطة خبرة", "Quest complete · +25 XP"],
   ".feedback-section h2": ["أحسنتَ التقاط الصورة.", "You caught the image."],
@@ -120,11 +122,11 @@ const copy = {
   "footer span:last-child": ["صوتك ونصك لا يُحفظان في التطبيق.", "Your voice and text are not stored by the app."],
   "#chat-title": ["تحدّث مع بَيَان", "Talk to Bayān"],
   ".chat-head .eyebrow": ["محادثة صوتية ونصية", "Voice and text conversation"],
-  ".chat-disclosure": ["تعمل المحادثة عبر نص محلي مع Gemma. الإملاء قد يستخدم خدمة المتصفح؛ راجع النص قبل الإرسال.", "Chat uses local Gemma text inference. Dictation may use a browser speech service; review the transcript before sending."],
-  ".chat-empty": ["اكتب رسالتك أو أمْلِها بالعربية، وسأجيبك بصوت إن توفر.", "Type or dictate a message. Bayān replies in your selected language and can speak when a voice is available."],
+  ".chat-disclosure": ["الإملاء المباشر يستخدم خدمة المتصفح عند توفرها، وقد يعالج الصوت خارج جهازك. عند عدم توفره، يُفرّغ Whisper التسجيل محليًا بعد إيقافه. أرسل النص بعد مراجعته إلى Gemma المحلي.", "Live dictation uses the browser speech service when available and may process audio off-device. Otherwise, local Whisper transcribes after you stop. Review the transcript before sending it to local Gemma."],
+  ".chat-empty": ["اكتب رسالتك أو أمْلِها بالعربية، وسأجيبك بالعربية ويمكنني قراءة الرد بصوت.", "Type or dictate in Arabic. Bayān replies in Arabic and can read the answer aloud."],
   ".chat-form label": ["رسالتك", "Your message"],
   "#chat-input": ["اكتب أو أمْلِ رسالتك…", "Type or dictate your message…"],
-  "#chat-mic-label": ["ابدأ الإملاء", "Start dictation"],
+  "#chat-mic-label": ["سجّل رسالة صوتية", "Record a voice note"],
   "#chat-send": ["أرسل", "Send"],
   ".speak-toggle span": ["انطق الرد بالعربية", "Speak replies aloud"],
   ".field-note": [null, null],
@@ -155,8 +157,8 @@ function applyLanguage() {
     else element.textContent = value;
   });
   $(".intro .eyebrow").innerHTML = state.language === "ar"
-    ? `<span class="live-mark"></span> مغامرة بلاغية · الجولة <b id="round-number">${new Intl.NumberFormat("ar").format(state.rounds + 1)}</b>`
-    : `<span class="live-mark"></span> Rhetoric quest · Round <b id="round-number">${state.rounds + 1}</b>`;
+    ? `<span class="live-mark"></span> مغامرة بلاغية · الجولة <span id="round-number">${new Intl.NumberFormat("ar").format(state.rounds + 1)}</span>`
+    : `<span class="live-mark"></span> Rhetoric quest · Round <span id="round-number">${state.rounds + 1}</span>`;
   $("h1").innerHTML = state.language === "ar" ? "اخرج لتجدَ <em>صورتك.</em>" : "Step outside. Find <em>your image.</em>";
   $(".walk-countdown").dir = "ltr";
   $("#reflection").dir = state.language === "ar" ? "rtl" : "ltr";
@@ -165,7 +167,9 @@ function applyLanguage() {
   const themeAction = state.language === "ar"
     ? (themeDark ? "الوضع الفاتح" : "الوضع الداكن")
     : (themeDark ? "Light mode" : "Dark mode");
-  $("#theme-label").textContent = themeAction;
+  const icon = themeDark ? "☀" : "☾";
+  const themeEl = $("#theme-toggle .theme-icon");
+  if (themeEl) themeEl.textContent = icon;
   $("#theme-toggle").setAttribute("aria-label", themeAction);
   $("#theme-toggle").title = themeAction;
   $("#player-rank").textContent = state.language === "ar"
@@ -225,10 +229,6 @@ async function translateCurrentContent() {
     $("#feedback-suggestion").textContent = suggestion;
     $("#feedback-rewrite").textContent = rewrite;
   }
-  for (const bubble of $("#chat-messages").querySelectorAll("[data-original]")) {
-    bubble.textContent = await translateText(bubble.dataset.original, target);
-    bubble.dir = target === "ar" ? "rtl" : "ltr";
-  }
 }
 
 $("#language-toggle").addEventListener("click", async () => {
@@ -236,12 +236,12 @@ $("#language-toggle").addEventListener("click", async () => {
   localStorage.setItem("bayaan-language", state.language);
   applyLanguage();
   await translateCurrentContent();
+  updateAudioControls();
 });
 
 function appendChatBubble(role, text) {
   const bubble = document.createElement("article");
   bubble.className = `chat-bubble ${role}`;
-  bubble.dataset.original = text;
   bubble.dir = state.language === "ar" ? "rtl" : "ltr";
   const speaker = document.createElement("span");
   speaker.textContent = role === "assistant"
@@ -249,122 +249,318 @@ function appendChatBubble(role, text) {
     : (state.language === "ar" ? "أنت" : "You");
   const content = document.createElement("p");
   content.textContent = text;
+  content.dir = "auto";
   bubble.append(speaker, content);
   $("#chat-messages").append(bubble);
   $(".chat-empty")?.remove();
   bubble.scrollIntoView({ behavior: "smooth", block: "nearest" });
 }
 
-function speakText(text, statusElement = $("#chat-voice-state")) {
-  if (!("speechSynthesis" in window) || !("SpeechSynthesisUtterance" in window)) {
-    statusElement.textContent = state.language === "ar" ? "الصوت غير مدعوم في هذا المتصفح." : "Speech output is not supported in this browser.";
-    return;
+function updateAudioControls() {
+  const labels = state.language === "ar"
+    ? { pause: "إيقاف مؤقت", resume: "متابعة القراءة", replay: "إعادة القراءة", stop: "إيقاف الصوت" }
+    : { pause: "Pause speech", resume: "Resume speech", replay: "Replay speech", stop: "Stop speech" };
+  ["feedback", "chat"].forEach((surface) => {
+    const active = playback.surface === surface && playback.state !== "idle";
+    const pause = $(`#${surface}-pause`);
+    const replay = $(`#${surface}-replay`);
+    const stop = $(`#${surface}-stop`);
+    pause.textContent = active && playback.state === "paused" ? "▶" : "Ⅱ";
+    pause.disabled = !active;
+    pause.setAttribute("aria-label", active && playback.state === "paused" ? labels.resume : labels.pause);
+    pause.title = active && playback.state === "paused" ? labels.resume : labels.pause;
+    replay.disabled = !lastReadAloud[surface];
+    replay.setAttribute("aria-label", labels.replay);
+    replay.title = labels.replay;
+    stop.disabled = !active;
+    stop.setAttribute("aria-label", labels.stop);
+    stop.title = labels.stop;
+  });
+}
+
+function releasePlayback(keepText = true) {
+  playback.requestId += 1;
+  window.speechSynthesis?.cancel();
+  if (playback.audio) {
+    playback.audio.pause();
+    playback.audio.removeAttribute("src");
+    playback.audio.load();
   }
-  window.speechSynthesis.cancel();
-  const utterance = new SpeechSynthesisUtterance(text);
-  utterance.lang = state.language === "ar" ? "ar-SA" : "en-US";
-  utterance.rate = 0.92;
-  const prefix = state.language === "ar" ? "ar" : "en";
-  const voice = window.speechSynthesis.getVoices().find((item) => item.lang.toLowerCase().startsWith(prefix));
-  if (!voice) {
-    if (state.language === "ar") {
-      statusElement.textContent = "جارٍ إعداد الصوت العربي المحلي…";
-      fetch("/api/speech", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text, language: "ar" }),
-      }).then(async (response) => {
-        if (!response.ok) throw new Error("Local voice is not configured");
-        const audioUrl = URL.createObjectURL(await response.blob());
-        const audio = new Audio(audioUrl);
-        audio.onended = () => URL.revokeObjectURL(audioUrl);
-        audio.onerror = () => {
-          URL.revokeObjectURL(audioUrl);
-          statusElement.textContent = "تعذّر تشغيل الرد الصوتي.";
-        };
-        statusElement.textContent = "بَيَان يتحدث بالعربية…";
-        await audio.play();
-        audio.onended = () => {
-          URL.revokeObjectURL(audioUrl);
-          statusElement.textContent = "";
-        };
-      }).catch(() => {
-        statusElement.textContent = "لا يوجد صوت عربي مثبت. فعّل Piper المحلي أو تابع المحادثة نصيًا.";
-      });
-    } else {
-      statusElement.textContent = "No matching English system voice is installed. Continue by text.";
+  if (playback.audioUrl) URL.revokeObjectURL(playback.audioUrl);
+  playback.audio = null;
+  playback.audioUrl = null;
+  playback.utterance = null;
+  playback.state = "idle";
+  if (playback.statusElement) playback.statusElement.textContent = "";
+  if (!keepText) playback.text = "";
+  updateAudioControls();
+  return playback.requestId;
+}
+
+function finishPlayback(requestId) {
+  if (requestId !== playback.requestId) return;
+  if (playback.audioUrl) URL.revokeObjectURL(playback.audioUrl);
+  playback.audio = null;
+  playback.audioUrl = null;
+  playback.utterance = null;
+  playback.state = "idle";
+  if (playback.statusElement) playback.statusElement.textContent = "";
+  updateAudioControls();
+}
+
+async function speakWithPiper(text, statusElement, requestId) {
+  try {
+    statusElement.textContent = state.language === "ar" ? "جارٍ إعداد الصوت العربي المحلي…" : "Preparing local speech…";
+    const response = await fetch("/api/speech", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ text, language: "ar" }),
+    });
+    if (!response.ok) throw new Error("Local voice is not configured");
+    const audioUrl = URL.createObjectURL(await response.blob());
+    if (requestId !== playback.requestId) {
+      URL.revokeObjectURL(audioUrl);
+      return;
     }
+    const audio = new Audio(audioUrl);
+    playback.audio = audio;
+    playback.audioUrl = audioUrl;
+    playback.state = "playing";
+    audio.onplay = updateAudioControls;
+    audio.onpause = () => {
+      if (!audio.ended && playback.audio === audio) {
+        playback.state = "paused";
+        updateAudioControls();
+      }
+    };
+    audio.onended = () => finishPlayback(requestId);
+    audio.onerror = () => {
+      statusElement.textContent = state.language === "ar" ? "تعذّر تشغيل الرد الصوتي." : "Could not play the response.";
+      finishPlayback(requestId);
+    };
+    statusElement.textContent = state.language === "ar" ? "بَيَان يتحدث بالعربية…" : "Bayān is speaking…";
+    updateAudioControls();
+    await audio.play();
+  } catch {
+    if (requestId !== playback.requestId) return;
+    statusElement.textContent = state.language === "ar"
+      ? "لا يوجد صوت عربي متاح. فعّل Piper المحلي أو ثبّت صوتًا عربيًا في المتصفح."
+      : "No Arabic voice is available. Configure local Piper or install a browser voice.";
+    finishPlayback(requestId);
+  }
+}
+
+function speakText(text, statusElement = $("#chat-voice-state"), surface = "chat") {
+  if (!text) return;
+  const requestId = releasePlayback(false);
+  playback.text = text;
+  playback.surface = surface;
+  playback.statusElement = statusElement;
+  lastReadAloud[surface] = text;
+  const hasSpeechSynthesis = "speechSynthesis" in window && "SpeechSynthesisUtterance" in window;
+  const outputLanguage = surface === "chat" ? "ar" : state.language;
+  const prefix = outputLanguage;
+  const voice = hasSpeechSynthesis
+    ? window.speechSynthesis.getVoices().find((item) => item.lang.toLowerCase().startsWith(prefix))
+    : null;
+  if (!voice) {
+    if (outputLanguage === "ar") void speakWithPiper(text, statusElement, requestId);
+    else statusElement.textContent = "No matching English system voice is installed. Continue by text.";
+    updateAudioControls();
     return;
   }
-  if (voice) utterance.voice = voice;
-  utterance.onstart = () => { statusElement.textContent = state.language === "ar" ? "بَيَان يتحدث…" : "Bayān is speaking…"; };
-  utterance.onend = () => { statusElement.textContent = ""; };
-  utterance.onerror = () => {
-    statusElement.textContent = state.language === "ar" ? "تعذّر تشغيل الصوت؛ تحقّق من الأصوات المثبتة." : "Could not play speech; check installed voices.";
+  const utterance = new SpeechSynthesisUtterance(text);
+  playback.utterance = utterance;
+  playback.state = "playing";
+  utterance.lang = voice.lang || (outputLanguage === "ar" ? "ar-SA" : "en-US");
+  utterance.voice = voice;
+  utterance.rate = 0.92;
+  utterance.onstart = () => {
+    if (requestId !== playback.requestId) return;
+    statusElement.textContent = state.language === "ar" ? "بَيَان يتحدث…" : "Bayān is speaking…";
   };
+  utterance.onpause = () => {
+    if (requestId !== playback.requestId) return;
+    playback.state = "paused";
+    updateAudioControls();
+  };
+  utterance.onresume = () => {
+    if (requestId !== playback.requestId) return;
+    playback.state = "playing";
+    updateAudioControls();
+  };
+  utterance.onend = () => finishPlayback(requestId);
+  utterance.onerror = () => {
+    if (requestId !== playback.requestId) return;
+    statusElement.textContent = state.language === "ar" ? "تعذّر تشغيل الصوت؛ تحقّق من الأصوات المثبتة." : "Could not play speech; check installed voices.";
+    finishPlayback(requestId);
+  };
+  statusElement.textContent = state.language === "ar" ? "بَيَان يتحدث…" : "Bayān is speaking…";
+  updateAudioControls();
   window.speechSynthesis.speak(utterance);
 }
 
+function toggleSpeechPause(surface) {
+  if (playback.surface !== surface || playback.state === "idle") return;
+  if (playback.state === "paused") {
+    if (playback.audio) void playback.audio.play();
+    else window.speechSynthesis.resume();
+    playback.state = "playing";
+  } else {
+    if (playback.audio) playback.audio.pause();
+    else window.speechSynthesis.pause();
+    playback.state = "paused";
+  }
+  updateAudioControls();
+}
+
+["feedback", "chat"].forEach((surface) => {
+  $(`#${surface}-pause`).addEventListener("click", () => toggleSpeechPause(surface));
+  $(`#${surface}-replay`).addEventListener("click", () => {
+    const statusElement = surface === "feedback" ? $("#speech-status") : $("#chat-voice-state");
+    speakText(lastReadAloud[surface], statusElement, surface);
+  });
+  $(`#${surface}-stop`).addEventListener("click", () => {
+    if (playback.surface === surface) releasePlayback();
+  });
+});
+
 function beginDictation(button, target, label, statusElement) {
-  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-  if (!SpeechRecognition) {
-    statusElement.textContent = state.language === "ar"
-      ? "الإملاء الصوتي غير مدعوم في هذا المتصفح. استخدم الكتابة أو جرّب Chrome."
-      : "Speech recognition is unavailable here. Type instead or try Chrome.";
+  if (state.recorder) {
+    state.recorder.stop();
     return;
   }
-  if (state.recognition) {
-    state.recognition.stop();
-    return;
-  }
-  const recognition = new SpeechRecognition();
-  recognition.lang = state.language === "ar" ? "ar-SA" : "en-US";
-  recognition.continuous = false;
-  recognition.interimResults = true;
-  recognition.maxAlternatives = 1;
   const existing = target.value.trim();
-  let finalTranscript = "";
-  state.recognition = recognition;
-  recognition.onstart = () => {
+  const Recognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (Recognition && !state.localDictationOnly) {
+    const recognition = new Recognition();
+    let committed = "";
+    let interim = "";
+    let recognitionError = "";
+    state.recorder = recognition;
+    recognition.lang = "ar-SA";
+    recognition.continuous = true;
+    recognition.interimResults = true;
+    recognition.onstart = () => {
+      button.classList.add("recording");
+      button.setAttribute("aria-pressed", "true");
+      label.textContent = state.language === "ar" ? "أوقف الإملاء" : "Stop dictation";
+      statusElement.textContent = state.language === "ar" ? "يُفرّغ كلامك العربي مباشرة…" : "Live Arabic transcription…";
+    };
+    recognition.onresult = (event) => {
+      committed = "";
+      interim = "";
+      for (let index = 0; index < event.results.length; index += 1) {
+        const result = event.results[index];
+        if (result.isFinal) committed += result[0]?.transcript ?? "";
+        else interim += result[0]?.transcript ?? "";
+      }
+      target.value = [existing, committed.trim(), interim.trim()].filter(Boolean).join(" ");
+      target.dispatchEvent(new Event("input", { bubbles: true }));
+      statusElement.textContent = interim.trim()
+        ? (state.language === "ar" ? "يُحدّث النص المباشر… راجعه قبل الإرسال." : "Updating live text… review before sending.")
+        : (state.language === "ar" ? "يُفرّغ كلامك العربي مباشرة…" : "Live Arabic transcription…");
+    };
+    recognition.onerror = (event) => {
+      recognitionError = event.error;
+      if (["network", "service-not-allowed", "language-not-supported"].includes(event.error)) {
+        state.localDictationOnly = true;
+      }
+      statusElement.textContent = event.error === "not-allowed"
+        ? (state.language === "ar" ? "اسمح للمتصفح باستخدام الميكروفون." : "Allow microphone access in your browser.")
+        : event.error === "no-speech"
+          ? (state.language === "ar" ? "لم يُلتقط كلام. حاول مرة أخرى." : "No speech was detected. Try again.")
+          : (state.language === "ar" ? "تعذّر الإملاء المباشر. اضغط الميكروفون مجددًا للتفريغ المحلي." : "Live dictation failed. Tap the mic again for local transcription.");
+    };
+    recognition.onend = () => {
+      if (state.recorder === recognition) state.recorder = null;
+      button.classList.remove("recording");
+      button.setAttribute("aria-pressed", "false");
+      label.textContent = state.language === "ar" ? "سجّل رسالة صوتية" : "Record a voice note";
+      target.value = [existing, committed.trim()].filter(Boolean).join(" ");
+      target.dispatchEvent(new Event("input", { bubbles: true }));
+      if (!recognitionError) {
+        statusElement.textContent = committed.trim()
+          ? (state.language === "ar" ? "انتهى الإملاء المباشر. راجع النص؛ قد يحتاج إلى تصحيح." : "Live dictation ended. Review the transcript; it may need correction.")
+          : (state.language === "ar" ? "لم يُلتقط كلام. حاول مرة أخرى." : "No speech was detected. Try again.");
+      }
+    };
+    try {
+      recognition.start();
+      return;
+    } catch {
+      state.recorder = null;
+      state.localDictationOnly = true;
+    }
+  }
+  if (!navigator.mediaDevices?.getUserMedia || !window.MediaRecorder) {
+    statusElement.textContent = state.language === "ar"
+      ? "الإملاء الصوتي غير مدعوم هنا. يمكنك كتابة رسالتك بدلًا من ذلك."
+      : "Speech input is not supported here. You can type your message instead.";
+    return;
+  }
+  navigator.mediaDevices.getUserMedia({ audio: true }).then((stream) => {
+    const mimeType = ["audio/webm;codecs=opus", "audio/webm", "audio/ogg;codecs=opus"]
+      .find((candidate) => MediaRecorder.isTypeSupported(candidate));
+    const recorder = mimeType ? new MediaRecorder(stream, { mimeType }) : new MediaRecorder(stream);
+    const chunks = [];
+    state.recordingStream = stream;
+    state.recorder = recorder;
+    recorder.onstart = () => {
     button.classList.add("recording");
     button.setAttribute("aria-pressed", "true");
-    label.textContent = state.language === "ar" ? "أوقف الاستماع" : "Stop listening";
-    statusElement.textContent = state.language === "ar" ? "أستمع الآن… اضغط لإيقاف الإملاء." : "Listening… tap to stop.";
+      label.textContent = state.language === "ar" ? "أوقف التسجيل" : "Stop recording";
+      statusElement.textContent = state.language === "ar" ? "يُسجّل الصوت؛ سيبدأ التفريغ المحلي بعد الإيقاف." : "Recording; local transcription starts after you stop.";
   };
-  recognition.onresult = (event) => {
-    let interim = "";
-    for (let index = event.resultIndex; index < event.results.length; index += 1) {
-      const phrase = event.results[index][0].transcript.trim();
-      if (event.results[index].isFinal) finalTranscript += `${phrase} `;
-      else interim += `${phrase} `;
-    }
-    target.value = [existing, `${finalTranscript}${interim}`.trim()].filter(Boolean).join(" ");
-    target.dispatchEvent(new Event("input", { bubbles: true }));
-    statusElement.textContent = interim
-      ? `${state.language === "ar" ? "أسمع" : "Hearing"}: ${interim}`
-      : (state.language === "ar" ? "وصلت الكلمات؛ راجعها قبل الإرسال." : "Transcript ready; review it before sending.");
-  };
-  recognition.onerror = (event) => {
-    const errors = {
-      "not-allowed": state.language === "ar" ? "لم يُسمح بالميكروفون." : "Microphone permission was denied.",
-      "no-speech": state.language === "ar" ? "لم ألتقط كلامًا. حاول مجددًا." : "No speech detected. Try again.",
-      "network": state.language === "ar" ? "خدمة إملاء المتصفح تحتاج إلى اتصال." : "The browser speech service requires a network connection.",
+    recorder.ondataavailable = (event) => {
+      if (event.data.size) chunks.push(event.data);
     };
-    statusElement.textContent = errors[event.error] || (state.language === "ar" ? "تعذّر الإملاء." : "Dictation failed.");
-  };
-  recognition.onend = () => {
-    state.recognition = null;
+    recorder.onerror = () => {
+      statusElement.textContent = state.language === "ar" ? "تعذّر تسجيل الصوت." : "Audio recording failed.";
+    };
+    recorder.onstop = async () => {
+      stream.getTracks().forEach((track) => track.stop());
+      state.recordingStream = null;
+      state.recorder = null;
+      state.localDictationOnly = false;
     button.classList.remove("recording");
     button.setAttribute("aria-pressed", "false");
-    label.textContent = state.language === "ar" ? "ابدأ الإملاء" : "Start dictation";
-    if (finalTranscript) statusElement.textContent = state.language === "ar" ? "راجع النص وصحّحه قبل الإرسال." : "Review and correct the transcript before sending.";
-  };
-  try {
-    recognition.start();
-  } catch {
-    state.recognition = null;
-    statusElement.textContent = state.language === "ar" ? "تعذّر بدء الميكروفون. تحقّق من إذن المتصفح." : "Could not start microphone. Check browser permission.";
-  }
+      label.textContent = state.language === "ar" ? "ابدأ تسجيل رسالة صوتية" : "Record a voice note";
+      if (!chunks.length) {
+        statusElement.textContent = state.language === "ar" ? "لم يُلتقط تسجيل." : "No audio was captured.";
+        return;
+      }
+      statusElement.textContent = state.language === "ar" ? "أحوّل الصوت محليًا إلى نص…" : "Transcribing locally…";
+      const blob = new Blob(chunks, { type: recorder.mimeType || "audio/webm" });
+      const formData = new FormData();
+      const extension = blob.type.includes("ogg") ? "ogg" : "webm";
+      formData.append("audio", blob, `voice-note.${extension}`);
+      formData.append("language", "ar");
+      try {
+        const response = await fetch("/api/transcribe", { method: "POST", body: formData });
+        if (!response.ok) {
+          const details = await response.json().catch(() => ({}));
+          throw new Error(details.detail || `HTTP ${response.status}`);
+        }
+        const result = await response.json();
+        target.value = [existing, result.transcript].filter(Boolean).join(" ");
+        target.dispatchEvent(new Event("input", { bubbles: true }));
+        statusElement.textContent = state.language === "ar"
+          ? "تم التفريغ محليًا. راجع النص وصحّحه قبل الإرسال."
+          : "Transcribed locally. Review and edit the transcript before sending.";
+      } catch (error) {
+        statusElement.textContent = error.message || (state.language === "ar" ? "تعذّر تفريغ الصوت." : "Transcription failed.");
+      }
+    };
+    recorder.start();
+    window.setTimeout(() => {
+      if (state.recorder === recorder && recorder.state === "recording") recorder.stop();
+    }, 30000);
+  }).catch((error) => {
+    statusElement.textContent = error.name === "NotAllowedError"
+      ? (state.language === "ar" ? "لم يُسمح بالميكروفون. يمكنك الكتابة بدلًا من ذلك." : "Microphone permission was denied. You can type instead.")
+      : (state.language === "ar" ? "تعذّر فتح الميكروفون." : "Could not access the microphone.");
+  });
 }
 
 $("#voice-chat-open").addEventListener("click", () => $("#voice-chat-dialog").showModal());
@@ -385,7 +581,7 @@ $("#chat-form").addEventListener("submit", async (event) => {
   try {
     const result = await postJson("/api/chat", {
       message,
-      language: state.language,
+      language: "ar",
       history: state.chatHistory.slice(-8),
     });
     state.chatHistory.push({ role: "user", content: message }, { role: "assistant", content: result.reply });
@@ -520,7 +716,7 @@ $("#speak-feedback").addEventListener("click", () => {
     state.feedback?.strength,
     state.feedback?.suggestion,
     state.feedback?.rewrite,
-  ].filter(Boolean).join(". "), $("#speech-status"));
+  ].filter(Boolean).join(". "), $("#speech-status"), "feedback");
 });
 
 $("#new-round").addEventListener("click", () => {
@@ -537,7 +733,8 @@ function setTheme(theme) {
   const action = state.language === "ar"
     ? (dark ? "الوضع الفاتح" : "الوضع الداكن")
     : (dark ? "Light mode" : "Dark mode");
-  $("#theme-label").textContent = action;
+  const themeIcon = themeToggle.querySelector(".theme-icon");
+  if (themeIcon) themeIcon.textContent = dark ? "☀" : "☾";
   themeToggle.setAttribute("aria-label", action);
   themeToggle.title = action;
   localStorage.setItem("bayaan-theme", theme);
@@ -567,3 +764,4 @@ async function checkModel() {
 checkModel();
 updateGameHud();
 applyLanguage();
+updateAudioControls();

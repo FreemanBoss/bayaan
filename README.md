@@ -8,9 +8,9 @@ The game loop is intentionally short on-screen: choose a challenge, pocket the p
 
 Gemma 3 4B runs locally through Ollama for mission generation, Arabic writing feedback, chat, and bidirectional text translation. This makes model choice and prompts inspectable and avoids sending text to a hosted model API. When Gemma is unavailable or its answer fails Arabic, rhetoric, or safety checks, curated fallback content keeps the game usable.
 
-Voice chat is available from the always-visible Talk to Bayān control. Type or use push-to-talk dictation, review the transcript, then send the text to local Gemma; recent turns stay in browser memory only. Browser speech recognition may use a browser-vendor network service; it is **not guaranteed to be local or private**, and may be unavailable in Firefox. Spoken replies use a matching browser voice when installed, or the optional local Piper route for Arabic. Bayān does not record or upload raw audio to its backend.
+Voice chat is available from the always-visible Talk to Bayān control. Arabic dictation uses the browser's live speech-recognition API when available, showing interim text while you speak; browser providers may process audio remotely. If live recognition is unavailable or fails, Bayān records the clip and transcribes it locally with faster-whisper after you stop. Review and correct the transcript before sending it to local Gemma. Arabic replies stay Arabic regardless of interface language and are spoken by local Piper when configured, or an installed browser voice. Transcription and model output are best-effort, not perfect.
 
-If the browser has no Arabic voice, optional local Piper speech can be enabled. Install its separately licensed engine and download a supported Arabic voice:
+Install optional local voice dependencies and download the Arabic voice:
 
 ```bash
 pip install -r requirements-voice.txt
@@ -18,7 +18,7 @@ mkdir -p .models
 python -m piper.download_voices ar_JO-kareem-medium --data-dir .models
 ```
 
-Set `PIPER_AR_VOICE` to the downloaded `.onnx` file path before starting FastAPI (for example, `.models/ar_JO-kareem-medium.onnx`). Piper itself is GPL-3.0; the Kareem model card points to its training dataset for licensing, so review that source and terms for your use before enabling/distributing it. The voice model is not bundled or committed. The API synthesizes Arabic WAV locally; no reply text is sent to a speech service.
+Set `PIPER_AR_VOICE` to the downloaded `.onnx` file path before starting FastAPI (for example, `.models/ar_JO-kareem-medium.onnx`). Set `WHISPER_MODEL` to choose a faster-whisper model; the default is `small`, downloaded into the local model cache on first use. Piper itself is GPL-3.0; the Kareem model card points to its training dataset for licensing, so review that source and terms for your use before enabling/distributing it. Neither speech model is bundled or committed. Arabic speech is synthesized locally as WAV; reply text is not sent to a speech service.
 
 ## Local Setup
 
@@ -78,7 +78,7 @@ flowchart LR
 - Missions are designed for stationary or safe outdoor observation. Never use the game while crossing roads or in unsafe surroundings.
 - Missions must not ask players to close their eyes, climb, touch, pick, consume, photograph, or record anything.
 - Arabic feedback is a learning suggestion, not an authoritative linguistic grade.
-- Browser speech recognition accuracy and privacy vary by browser, locale, microphone, and network. Review dictated text before submission; manual typing is always available.
+- Live browser speech recognition is not available in every browser and may process audio through its provider. The local faster-whisper fallback is record-then-transcribe, not streaming. Accuracy varies by dialect, microphone, and environment; review dictated text before submission.
 - Bayān does not store accounts, precise location, reflections, audio, or photos. XP and round count are stored in browser local storage.
 
 ## Hacktoberfest Week 1

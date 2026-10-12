@@ -56,7 +56,8 @@ button { cursor: pointer; }
 .model-status { display: inline-flex; align-items: center; gap: 8px; color: var(--muted); font-size: 12px; }
 .model-status i { display: block; width: 7px; height: 7px; border-radius: 50%; background: #d29b3c; }
 .model-status.ready i { background: #43815a; }
-.theme-toggle { width: 36px; height: 36px; border: 1px solid var(--line); color: var(--forest); background: transparent; font-size: 19px; }
+.theme-toggle { width: 38px; height: 38px; border: 1px solid var(--line); color: var(--forest); background: transparent; font-size: 18px; display: inline-grid; place-items: center; padding: 0; }
+.theme-toggle .theme-icon { display: block; line-height: 1; }
 .language-toggle { min-width: 48px; min-height: 36px; padding: 0 9px; border: 1px solid var(--line); color: var(--ink); background: var(--surface); font: 700 12px sans-serif; }
 .voice-chat-open { min-height: 36px; padding: 0 11px; display: inline-flex; align-items: center; gap: 7px; border: 1px solid var(--forest); color: var(--forest); background: var(--surface-selected); font-size: 12px; font-weight: 700; white-space: nowrap; }
 .voice-chat-open > span:first-child { font-size: 15px; }
@@ -70,8 +71,8 @@ h1 em::after { content: ""; position: absolute; right: 0; bottom: 3px; width: 10
 .lede { max-width: 540px; margin-bottom: 25px; color: #54685f; line-height: 2; font-size: 16px; }
 .quest-steps { display: flex; align-items: center; gap: 12px; color: var(--muted); font-size: 12px; }
 .quest-step { display: inline-flex; align-items: center; gap: 6px; }
-.quest-step b { width: 23px; height: 23px; display: grid; place-items: center; border: 1px solid var(--line); border-radius: 50%; color: var(--muted); font-size: 10px; }
-.quest-step.active b, .quest-step.completed b { border-color: var(--forest); color: var(--paper); background: var(--forest); }
+.step-digit { width: 23px; height: 23px; display: grid; place-items: center; border: 1px solid var(--line); border-radius: 50%; color: var(--muted); font-size: 10px; }
+.quest-step.active .step-digit, .quest-step.completed .step-digit { border-color: var(--forest); color: var(--paper); background: var(--forest); }
 .quest-step.active span { color: var(--ink); font-weight: 700; }
 .step-line { width: 36px; height: 1px; background: #bec8bb; }
 .field-note { width: 260px; min-height: 218px; padding: 22px 24px; background: #e9e3cf; transform: rotate(2.5deg); box-shadow: 9px 12px 0 #d9dfd0; display: flex; flex-direction: column; }
@@ -149,6 +150,10 @@ footer { min-height: 68px; padding: 16px max(20px, calc((100% - 1060px) / 2)); b
 .voice-disclosure { margin: 8px 0 0; line-height: 1.7; }
 .voice-response { margin-top: 12px; }
 .speech-status { margin: 4px 0; }
+.audio-controls { display: inline-flex; align-items: center; gap: 4px; }
+.audio-control { width: 30px; height: 30px; padding: 0; border: 1px solid var(--line); border-radius: 4px; color: var(--forest); background: var(--surface); font-size: 14px; }
+.audio-control:disabled { opacity: .42; }
+.audio-control:not(:disabled) { cursor: pointer; }
 .chat-dialog { width: min(560px, calc(100% - 28px)); max-height: min(760px, calc(100dvh - 32px)); padding: 0; border: 1px solid var(--line); color: var(--ink); background: var(--paper); box-shadow: 0 24px 100px #0006; }
 .chat-dialog::backdrop { background: #0c1712a8; backdrop-filter: blur(3px); }
 .chat-head { padding: 19px 22px 14px; display: flex; align-items: flex-start; justify-content: space-between; border-bottom: 1px solid var(--line); background: var(--surface); }
@@ -169,6 +174,7 @@ footer { min-height: 68px; padding: 16px max(20px, calc((100% - 1060px) / 2)); b
 .chat-controls { margin-top: 9px; display: flex; align-items: center; justify-content: space-between; gap: 10px; }
 .chat-controls .primary-button { min-height: 38px; }
 .chat-foot { padding: 6px 18px 14px; display: flex; align-items: center; justify-content: space-between; gap: 10px; color: var(--muted); background: var(--surface); }
+.chat-voice-state { flex: 1; min-width: 0; }
 .speak-toggle { display: inline-flex; align-items: center; gap: 7px; font-size: 11px; }
 .speak-toggle input { accent-color: var(--forest); }
 .chat-voice-state { font-size: 10px; }

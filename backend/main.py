@@ -1,11 +1,12 @@
 import io
 import os
+import tempfile
 import wave
 from pathlib import Path
 from typing import Literal
 
 import httpx
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.responses import FileResponse, Response
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
@@ -23,8 +24,10 @@ ROOT = os.path.dirname(os.path.dirname(__file__))
 OLLAMA_URL = os.getenv("OLLAMA_URL", "http://127.0.0.1:11434")
 MODEL_NAME = os.getenv("OLLAMA_MODEL", "gemma3:4b")
 PIPER_AR_VOICE = os.getenv("PIPER_AR_VOICE", "")
+WHISPER_MODEL = os.getenv("WHISPER_MODEL", "small")
 _piper_voice = None
 _piper_voice_path = ""
+_whisper_model = None
 
 app = FastAPI(title="بَيَان | Bayān Walk", description="لعبة بلاغية عربية للمشي والتأمل")
 app.mount("/static", StaticFiles(directory=os.path.join(ROOT, "web")), name="static")
@@ -62,7 +65,40 @@ class SpeechRequest(BaseModel):
     language: Literal["ar"] = "ar"
 
 
-async def ask_local_model(prompt: str, temperature: float = 0.4) -> str:
+def _transcribe_local_audio(audio: bytes, suffix: str, language: str) -> dict[str, str]:
+    global _whisper_model
+    from faster_whisper import WhisperModel
+
+    if _whisper_model is None:
+        _whisper_model = WhisperModel(WHISPER_MODEL, device="cpu", compute_type="int8")
+    temporary_path = ""
+    try:
+        with tempfile.NamedTemporaryFile(suffix=suffix, delete=False) as temporary_file:
+            temporary_file.write(audio)
+            temporary_path = temporary_file.name
+        segments, info = _whisper_model.transcribe(
+            temporary_path,
+            language=language,
+            beam_size=5,
+            vad_filter=True,
+        )
+        transcript = " ".join(segment.text.strip() for segment in segments).strip()
+        if not transcript:
+            raise ValueError("No speech was recognized")
+        return {"transcript": transcript, "detected_language": info.language}
+    finally:
+        if temporary_path:
+            Path(temporary_path).unlink(missing_ok=True)
+
+
+async def ask_local_model(
+    prompt: str,
+    temperature: float = 0.4,
+    num_predict: int | None = None,
+) -> str:
+    options = {"temperature": temperature}
+    if num_predict is not None:
+        options["num_predict"] = num_predict
     async with httpx.AsyncClient(timeout=90) as client:
         response = await client.post(
             f"{OLLAMA_URL}/api/generate",
@@ -71,7 +107,7 @@ async def ask_local_model(prompt: str, temperature: float = 0.4) -> str:
                 "prompt": prompt,
                 "stream": False,
                 "format": "json",
-                "options": {"temperature": temperature},
+                "options": options,
             },
         )
         response.raise_for_status()
@@ -171,29 +207,27 @@ async def translate(request: TranslationRequest):
 
 @app.post("/api/chat")
 async def voice_chat(request: ChatRequest):
-    language = "العربية الفصحى" if request.language == "ar" else "English"
     context = "\n".join(
         f"{turn.role}: {turn.content}" for turn in request.history[-8:]
     )
     prompt = (
-        "You are Bayān, a concise, warm Arabic rhetoric mentor and outdoor reflection companion. "
-        f"Reply in {language}. Keep Arabic language and rhetoric at the center. "
-        "Give helpful conversational responses, do not claim to hear audio (you receive text only), "
-        "and never give unsafe outdoor instructions. Return JSON only with key reply.\n"
+        "You are Bayān, a concise Arabic rhetoric mentor and outdoor reflection companion. "
+        "Reply only in clear Modern Standard Arabic, even when the user writes in English or the interface is English. "
+        "Be direct, accurate, and conversational. Keep each answer to 1-3 short sentences and under 50 words; "
+        "ask one brief clarifying question only when needed. "
+        "Do not switch to English unless the user explicitly requests a translation. "
+        "Do not claim to hear audio (you receive text only), and never give unsafe outdoor instructions. "
+        "Return JSON only with key reply.\n"
         f"Recent conversation:\n{context}\nuser: {request.message}"
     )
     try:
-        raw = await ask_local_model(prompt, temperature=0.45)
+        raw = await ask_local_model(prompt, temperature=0.2, num_predict=160)
         reply = parse_json_object(raw).get("reply")
-        if not isinstance(reply, str) or not reply.strip():
+        if not isinstance(reply, str) or not reply.strip() or not any("\u0621" <= char <= "\u064a" for char in reply):
             raise ValueError("Invalid chat response")
         return {"reply": reply.strip(), "source": MODEL_NAME}
     except (httpx.HTTPError, ValueError, KeyError, TypeError):
-        reply = (
-            "أستطيع مساعدتك في البلاغة العربية. أعد المحاولة بعد التأكد من تشغيل Gemma المحلي."
-            if request.language == "ar"
-            else "I can help with Arabic rhetoric. Please retry after checking that local Gemma is running."
-        )
+        reply = "أستطيع مساعدتك في البلاغة العربية. أعد المحاولة بعد التأكد من تشغيل Gemma المحلي."
         return {"reply": reply, "source": "offline-reply"}
 
 
@@ -221,3 +255,25 @@ async def speech(request: SpeechRequest):
     except Exception as error:
         raise HTTPException(status_code=500, detail="Local Arabic speech synthesis failed") from error
     return Response(content=audio, media_type="audio/wav", headers={"Cache-Control": "no-store"})
+
+
+@app.post("/api/transcribe")
+async def transcribe_audio(
+    audio: UploadFile = File(...),
+    language: Literal["ar"] = Form("ar"),
+):
+    if audio.content_type and not audio.content_type.startswith("audio/"):
+        raise HTTPException(status_code=415, detail="Upload an audio recording")
+    payload = await audio.read(25 * 1024 * 1024 + 1)
+    if not payload:
+        raise HTTPException(status_code=400, detail="Audio recording is empty")
+    if len(payload) > 25 * 1024 * 1024:
+        raise HTTPException(status_code=413, detail="Recording is too large (25 MB limit)")
+    suffix = Path(audio.filename or "note.webm").suffix[:12] or ".webm"
+    try:
+        result = await run_in_threadpool(_transcribe_local_audio, payload, suffix, "ar")
+        return {**result, "source": f"faster-whisper:{WHISPER_MODEL}"}
+    except ImportError:
+        raise HTTPException(status_code=503, detail="Install the optional local voice dependencies")
+    except ValueError as error:
+        raise HTTPException(status_code=422, detail=str(error))
