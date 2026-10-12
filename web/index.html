@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#163f36" />
+    <meta name="description" content="بَيَان: لعبة بلاغية عربية تدعوك إلى تأمل العالم خارج الشاشة." />
+    <title>بَيَان | امشِ، تأمّل، ثم اكتب</title>
+    <link rel="stylesheet" href="/static/styles.css" />
+    <script src="/static/app.js" defer></script>
+  </head>
+  <body>
+    <header class="topbar">
+      <a class="brand" href="/" aria-label="بَيَان الصفحة الرئيسية"><span class="brand-mark">ب</span><span>بَيَان</span></a>
+      <div class="top-actions">
+        <span class="model-status" id="model-status"><i></i><span>جارٍ فحص النموذج</span></span>
+      </div>
+    </header>
+
+    <main>
+      <section class="intro" id="intro">
+        <div class="intro-copy">
+          <p class="eyebrow">لعبة بلاغية في الهواء الطلق</p>
+          <h1>دع العالمَ <em>يُلهمُ</em> عبارتك.</h1>
+          <p class="lede">تأمّل مشهدًا حقيقيًا، ثم عُد بصورةٍ عربية من صنعك. بَيَان يبدأ بسؤال، ثم يترك لك الطريق.</p>
+          <div class="steps" aria-label="مراحل الجولة">
+            <span><b>١</b> اختر</span><span class="step-line"></span><span><b>٢</b> اخرج</span><span class="step-line"></span><span><b>٣</b> اكتب</span>
+          </div>
+        </div>
+        <div class="field-note" aria-hidden="true">
+          <span class="note-label">من دفتر البلاغة</span>
+          <span class="note-word">تَشبيه</span>
+          <span class="note-rule"></span>
+          <span class="note-example">«الظلُّ عباءةٌ<br />ترتديها الأرض»</span>
+          <span class="note-caption">صورةٌ تبدأ بالملاحظة</span>
+        </div>
+      </section>
+
+      <section class="builder" id="builder" aria-labelledby="builder-title">
+        <div class="section-heading">
+          <div><p class="eyebrow">جولة جديدة</p><h2 id="builder-title">ما الصورة التي ستبحث عنها؟</h2></div>
+          <span class="round-index">01 / 03</span>
+        </div>
+        <div class="form-grid">
+          <fieldset class="mode-field">
+            <legend>اختر تمرينك البلاغي</legend>
+            <div class="mode-options">
+              <label class="mode-option"><input type="radio" name="mode" value="تشبيه" checked /><span class="mode-icon">◉</span><strong>تشبيه</strong><small>اربط مشهدًا بشيء تعرفه</small></label>
+              <label class="mode-option"><input type="radio" name="mode" value="استعارة" /><span class="mode-icon">✳</span><strong>استعارة</strong><small>امنح الطبيعة فعلًا أو صوتًا</small></label>
+              <label class="mode-option"><input type="radio" name="mode" value="وصف حسي" /><span class="mode-icon">≋</span><strong>وصف حسّي</strong><small>التقط التفاصيل بالكلمات</small></label>
+            </div>
+          </fieldset>
+          <div class="place-field">
+            <label for="place">أين ستكون جولتك؟ <span>اختياري</span></label>
+            <input id="place" type="text" maxlength="80" placeholder="حديقة، فناء الجامعة، شارع هادئ…" />
+            <p>لا نطلب موقعك الدقيق، ولا نحفظه.</p>
+            <button class="primary-button" id="create-mission" type="button"><span>أنشئ مهمتي</span><span aria-hidden="true">←</span></button>
+          </div>
+        </div>
+      </section>
+
+      <section class="mission-section hidden" id="mission-section" aria-live="polite">
+        <div class="section-heading"><div><p class="eyebrow">مهمتك</p><h2 id="mission-title">تأمّل ثم صُغ</h2></div><span class="round-index">02 / 03</span></div>
+        <article class="mission-card">
+          <div class="mission-meta"><span class="mode-chip" id="mission-mode">تشبيه</span><span id="mission-source">ذكاء اصطناعي مفتوح</span></div>
+          <p class="mission-prompt" id="mission-prompt"></p>
+          <p class="mission-question" id="mission-question"></p>
+          <button class="text-button" id="translate-mission" type="button">ترجم هذه المهمة إلى الإنجليزية <span>↗</span></button>
+          <p class="translation hidden" id="mission-translation" dir="ltr"></p>
+          <div class="mission-actions"><label class="duration-label" for="duration">وقت التأمل <select id="duration"><option value="2">دقيقتان</option><option value="5">٥ دقائق</option><option value="10">١٠ دقائق</option></select></label><button class="primary-button" id="start-walk" type="button">سأخرج الآن <span aria-hidden="true">←</span></button></div>
+        </article>
+      </section>
+
+      <section class="walk-screen hidden" id="walk-screen" aria-live="polite">
+        <div class="walk-orbit" aria-hidden="true"><span>خُذْ نَفَسًا</span></div>
+        <p class="eyebrow">الآن دور العالم</p>
+        <h2>ضع الهاتف جانبًا.</h2>
+        <p>لا تحتاج إلى تصوير شيء. امشِ في مكان آمن، وتأمّل ما حولك. عُد حين تكون مستعدًا.</p>
+        <p class="walk-countdown" id="walk-countdown" aria-label="الوقت المتبقي">٠٢:٠٠</p>
+        <p class="walk-finished hidden" id="walk-finished">انتهى وقت التأمل. عُد حين تكون مستعدًا.</p>
+        <button class="return-button" id="return-from-walk" type="button">عدتُ من جولتي <span>←</span></button>
+      </section>
+
+      <section class="reflection-section hidden" id="reflection-section" aria-labelledby="reflection-title">
+        <div class="section-heading"><div><p class="eyebrow">ما الذي رأيت؟</p><h2 id="reflection-title">حوّل ملاحظتك إلى صورة</h2></div><span class="round-index">03 / 03</span></div>
+        <div class="reflection-layout">
+          <div class="prompt-reminder"><span class="reminder-mark">“</span><p id="reflection-reminder"></p><span class="reminder-caption">مهمتك، لتعود إليها</span></div>
+          <form id="reflection-form" class="reflection-form">
+            <label for="reflection">اكتب عبارتك بالعربية</label>
+            <textarea id="reflection" rows="4" maxlength="500" placeholder="مثال: كان ضوء العصر خيطًا ذهبيًا يخيط أطراف الغيم…" required></textarea>
+            <div class="form-foot"><span id="char-count">٠ / ٥٠٠</span><button class="primary-button" type="submit" id="get-feedback">تأمّل عبارتي <span>←</span></button></div>
+          </form>
+        </div>
+      </section>
+
+      <section class="feedback-section hidden" id="feedback-section" aria-live="polite">
+        <div class="section-heading"><div><p class="eyebrow">مرآة بلاغية</p><h2>لغتك تنمو بالملاحظة.</h2></div><span class="round-index">تمّت الجولة</span></div>
+        <div class="feedback-grid">
+          <article class="feedback-block"><span>١ / ما يلمع</span><p id="feedback-strength"></p></article>
+          <article class="feedback-block"><span>٢ / خطوة تالية</span><p id="feedback-suggestion"></p></article>
+          <article class="feedback-block feedback-rewrite"><span>٣ / اقتراح للصياغة</span><p id="feedback-rewrite"></p></article>
+        </div>
+        <button class="text-button" id="translate-feedback" type="button">ترجم التغذية الراجعة إلى الإنجليزية ↗</button>
+        <p class="translation hidden" id="feedback-translation" dir="ltr"></p>
+        <button class="new-round" id="new-round" type="button">ابدأ جولة أخرى <span>↶</span></button>
+      </section>
+    </main>
+
+    <footer><span>بَيَان · مساحةٌ للبلاغة خارج الشاشة</span><span>نصوصك تبقى في هذا المتصفح.</span></footer>
+    <div class="toast" id="toast" role="status"></div>
+  </body>
+</html>
