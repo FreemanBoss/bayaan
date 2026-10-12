@@ -73,13 +73,13 @@ def fallback_mission(mode: str) -> dict[str, str]:
     }
 
 
-def validate_feedback(value: dict[str, Any]) -> dict[str, str]:
+def validate_feedback(value: dict[str, Any], language: str = "ar") -> dict[str, str]:
     fields = ("strength", "suggestion", "rewrite")
     result: dict[str, str] = {}
     for field in fields:
         text = value.get(field)
-        if not isinstance(text, str) or not has_arabic(text.strip()):
-            raise ValueError("Feedback must include short Arabic text")
+        if not isinstance(text, str) or (language == "ar" and not has_arabic(text.strip())):
+            raise ValueError("Feedback language does not match the selected language")
         text = text.strip()
         if len(text) > 240:
             raise ValueError("Feedback field is too long")

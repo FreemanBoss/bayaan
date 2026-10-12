@@ -6,8 +6,8 @@
     <meta name="theme-color" content="#163f36" />
     <meta name="description" content="بَيَان: لعبة بلاغية عربية تدعوك إلى تأمل العالم خارج الشاشة." />
     <title>بَيَان | امشِ، تأمّل، ثم اكتب</title>
-    <link rel="stylesheet" href="/static/styles.css" />
-    <script src="/static/app.js" defer></script>
+    <link rel="stylesheet" href="/static/styles.css?v=7" />
+    <script src="/static/app.js?v=7" defer></script>
   </head>
   <body>
     <header class="topbar">
@@ -19,7 +19,9 @@
           <span class="xp-count"><b id="score">٠</b><small>نقطة</small></span>
         </div>
         <span class="model-status" id="model-status"><i></i><span>جارٍ فحص النموذج</span></span>
-        <button class="theme-toggle" id="theme-toggle" type="button" aria-label="تفعيل الوضع الداكن" title="الوضع الداكن">◐</button>
+        <button class="language-toggle" id="language-toggle" type="button" aria-label="Switch interface language to English">EN</button>
+        <button class="voice-chat-open" id="voice-chat-open" type="button"><span aria-hidden="true">◖))</span><span id="talk-label">تحدّث مع بَيَان</span></button>
+        <button class="theme-toggle" id="theme-toggle" type="button" aria-label="تفعيل الوضع الداكن" title="الوضع الداكن"><span id="theme-label">الوضع الداكن</span></button>
       </div>
     </header>
 
@@ -57,7 +59,7 @@
             </div>
           </fieldset>
           <div class="place-field">
-            <label for="place">أين ستكون جولتك؟ <span>اختياري</span></label>
+            <label for="place" id="place-label">أين ستكون جولتك؟ <span>اختياري</span></label>
             <input id="place" type="text" maxlength="80" placeholder="حديقة، فناء الجامعة، شارع هادئ…" />
             <p>لا نطلب موقعك الدقيق، ولا نحفظه.</p>
             <button class="primary-button" id="create-mission" type="button"><span>أنشئ مهمتي</span><span aria-hidden="true">←</span></button>
@@ -71,7 +73,7 @@
           <div class="mission-meta"><span class="mode-chip" id="mission-mode">تشبيه</span><span id="mission-source">ذكاء اصطناعي مفتوح</span></div>
           <p class="mission-prompt" id="mission-prompt"></p>
           <p class="mission-question" id="mission-question"></p>
-          <div class="mission-actions"><label class="duration-label" for="duration">وقت التأمل <select id="duration"><option value="2">دقيقتان</option><option value="5">٥ دقائق</option><option value="10">١٠ دقائق</option></select></label><button class="primary-button" id="start-walk" type="button">سأخرج الآن <span aria-hidden="true">←</span></button></div>
+          <div class="mission-actions"><label class="duration-label" for="duration"><span>وقت التأمل</span> <select id="duration"><option value="2">دقيقتان</option><option value="5">٥ دقائق</option><option value="10">١٠ دقائق</option></select></label><button class="primary-button" id="start-walk" type="button">سأخرج الآن <span aria-hidden="true">←</span></button></div>
         </article>
       </section>
 
@@ -90,7 +92,7 @@
         <div class="reflection-layout">
           <div class="prompt-reminder"><span class="reminder-mark">“</span><p id="reflection-reminder"></p><span class="reminder-caption">مهمتك، لتعود إليها</span></div>
           <form id="reflection-form" class="reflection-form">
-            <label for="reflection">اكتب عبارتك بالعربية</label>
+            <label for="reflection" id="reflection-label">اكتب عبارتك بالعربية</label>
             <textarea id="reflection" rows="4" maxlength="500" placeholder="مثال: كان ضوء العصر خيطًا ذهبيًا يخيط أطراف الغيم…" required></textarea>
             <div class="voice-tools">
               <button class="voice-input" id="voice-input" type="button" aria-pressed="false"><span class="mic-mark" aria-hidden="true">●</span><span id="voice-input-label">أمْلِ عبارتك بالعربية</span></button>
@@ -115,6 +117,17 @@
     </main>
 
     <footer><span>بَيَان · العبارة تبدأ خارج الشاشة</span><span>صوتك ونصك لا يُحفظان في التطبيق.</span></footer>
+    <dialog class="chat-dialog" id="voice-chat-dialog" aria-labelledby="chat-title">
+      <div class="chat-head"><div><p class="eyebrow" data-i18n="conversation">محادثة صوتية ونصية</p><h2 id="chat-title" data-i18n="talkToBayaan">تحدّث مع بَيَان</h2></div><button class="close-dialog" id="close-chat" type="button" aria-label="إغلاق">×</button></div>
+      <p class="chat-disclosure" data-i18n="voicePrivacy">تعمل المحادثة عبر نص محلي مع Gemma. الإملاء قد يستخدم خدمة المتصفح؛ راجع النص قبل الإرسال.</p>
+      <div class="chat-messages" id="chat-messages" aria-live="polite"><p class="chat-empty" data-i18n="chatWelcome">اكتب رسالتك أو أمْلِها بالعربية، وسأجيبك بصوت إن توفر.</p></div>
+      <form id="chat-form" class="chat-form">
+        <label for="chat-input" data-i18n="yourMessage">رسالتك</label>
+        <textarea id="chat-input" rows="3" maxlength="1200" placeholder="اكتب أو أمْلِ رسالتك…"></textarea>
+        <div class="chat-controls"><button class="voice-input" id="chat-mic" type="button" aria-pressed="false"><span class="mic-mark" aria-hidden="true">●</span><span id="chat-mic-label" data-i18n="startDictation">ابدأ الإملاء</span></button><button class="primary-button" id="chat-send" type="submit" data-i18n="sendMessage">أرسل</button></div>
+      </form>
+      <div class="chat-foot"><label class="speak-toggle"><input id="auto-speak" type="checkbox" checked /><span data-i18n="speakReplies">انطق الرد بالعربية</span></label><span class="chat-voice-state" id="chat-voice-state" aria-live="polite"></span></div>
+    </dialog>
     <div class="toast" id="toast" role="status"></div>
   </body>
 </html>

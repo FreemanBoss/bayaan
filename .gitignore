@@ -4,3 +4,8 @@ __pycache__/
 venv/
 .env
 .DS_Store
+SUBMISSION_DRAFT.md
+VIDEO_SCRIPT.md
+PRIVATE_*.md
+.models/
+*.wav

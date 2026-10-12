@@ -1,14 +1,24 @@
 # Bayān Walk | بَيَان
 
-**An Arabic-first rhetoric field game.** Choose a البلاغة challenge, step away from the screen to notice the world, then return to write an original Arabic image. Gemma generates and responds in Arabic. The product has no translation feature.
+**An Arabic-first rhetoric field game.** Choose a البلاغة challenge, step away from the screen to notice the world, then return to write an original Arabic image. Arabic is the default product language. The EN/عربي control switches the interface and translates generated missions and feedback in either direction using local Gemma.
 
 The game loop is intentionally short on-screen: choose a challenge, pocket the phone, observe safely, and come back to reflect. Completing a round earns experience points stored in this browser.
 
 ## Why Open Models
 
-Gemma 3 4B runs locally through Ollama for mission generation and Arabic writing feedback. This makes model choice and prompts inspectable and avoids sending reflection text to a hosted model API. When Gemma is unavailable or its answer fails Arabic, rhetoric, or safety checks, a curated Arabic mission and feedback fallback keep the game usable.
+Gemma 3 4B runs locally through Ollama for mission generation, Arabic writing feedback, chat, and bidirectional text translation. This makes model choice and prompts inspectable and avoids sending text to a hosted model API. When Gemma is unavailable or its answer fails Arabic, rhetoric, or safety checks, curated fallback content keeps the game usable.
 
-Voice input is optional progressive enhancement through the browser Web Speech API. Browser speech recognition may use a browser-vendor network service; it is **not guaranteed to be local or private**. Bayān does not record or upload audio to its backend. The recognized text appears in the editor for review, and only after the user explicitly submits it is text sent to local Gemma. Spoken feedback uses browser speech synthesis and an installed Arabic voice when available.
+Voice chat is available from the always-visible Talk to Bayān control. Type or use push-to-talk dictation, review the transcript, then send the text to local Gemma; recent turns stay in browser memory only. Browser speech recognition may use a browser-vendor network service; it is **not guaranteed to be local or private**, and may be unavailable in Firefox. Spoken replies use a matching browser voice when installed, or the optional local Piper route for Arabic. Bayān does not record or upload raw audio to its backend.
+
+If the browser has no Arabic voice, optional local Piper speech can be enabled:
+
+```bash
+pip install -r requirements-voice.txt
+mkdir -p .models
+python -m piper.download_voices ar_JO-kareem-medium --data-dir .models
+```
+
+Set `PIPER_AR_VOICE` to the downloaded `.onnx` file path before starting FastAPI (for example, `.models/ar_JO-kareem-medium.onnx`). Piper itself is GPL-3.0; the Kareem model card points to its training dataset for licensing, so review that source and terms for your use before enabling/distributing it. The voice model is not bundled or committed.
 
 ## Local Setup
 
@@ -49,7 +59,7 @@ The tests cover Arabic output validation, safe mission fallback, rhetoric-mode c
 
 ```mermaid
 flowchart LR
-    A[Arabic RTL game UI] --> B[FastAPI]
+    A[Arabic / English game UI] --> B[FastAPI]
     B --> C{Local Ollama available?}
     C -->|Yes| D[Gemma 3 4B]
     C -->|No or invalid output| E[Curated Arabic fallback]
@@ -58,7 +68,9 @@ flowchart LR
     F --> A
     G[Optional browser speech recognition] --> H[Editable transcript]
     H -->|User submits text| B
-    A --> I[Browser Arabic speech synthesis]
+    A --> I{Arabic browser voice available?}
+    I -->|Yes| J[Browser speech synthesis]
+    I -->|No, Piper configured| K[Local Piper Arabic WAV]
 ```
 
 ## Safety and Scope

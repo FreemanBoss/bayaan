@@ -1,0 +1,2 @@
+# Optional offline TTS only. Piper is GPL-3.0; see README before installing.
+piper-tts==1.8.0
